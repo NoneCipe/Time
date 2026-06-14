@@ -1,0 +1,2278 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Слово и Пепел</title>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Cinzel:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1a1209;--parchment:#f2e8d5;--ash:#7a7060;--ash-light:#b0a48c;
+  --ember:#c84b1a;--ember-dim:#8a3210;--gold:#c9a84c;--gold-dim:#7a6030;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#08060402;color:var(--ink);font-family:'Cormorant Garamond',serif;min-height:100vh;overflow-x:hidden}
+
+/* CANVAS BACKGROUND */
+#bg-canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+
+/* OVERLAY */
+#fade-overlay{position:fixed;inset:0;background:#040302;z-index:200;pointer-events:none;opacity:0;transition:opacity .4s ease}
+#fade-overlay.on{opacity:1;pointer-events:all}
+
+/* SCREENS */
+.screen{display:none;position:relative;z-index:10;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+
+/* ═══ TITLE ═══ */
+#screen-title{align-items:center;justify-content:center;text-align:center;padding:50px 24px 60px;gap:0}
+.t-emblem{width:72px;height:72px;margin:0 auto 28px;opacity:0;animation:up .9s ease .3s forwards}
+.t-title{font-family:'Cinzel',serif;font-size:clamp(2.4rem,7vw,3.8rem);font-weight:600;color:var(--parchment);letter-spacing:.08em;line-height:1.1;opacity:0;animation:up .9s ease .6s forwards;text-shadow:0 2px 32px rgba(201,168,76,.25)}
+.t-sub{font-family:'IM Fell English',serif;font-style:italic;font-size:1.05rem;color:var(--ash-light);margin-top:10px;opacity:0;animation:up .9s ease .85s forwards;letter-spacing:.06em}
+.t-rule{width:100px;height:1px;background:linear-gradient(90deg,transparent,var(--gold-dim),transparent);margin:30px auto;opacity:0;animation:up .9s ease 1s forwards}
+.t-verse{max-width:320px;font-size:1rem;line-height:1.9;color:var(--ash-light);font-style:italic;opacity:0;animation:up .9s ease 1.15s forwards}
+.t-btns{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:40px;opacity:0;animation:up .9s ease 1.4s forwards}
+.btn-primary{font-family:'Cinzel',serif;font-size:.85rem;letter-spacing:.14em;color:var(--gold);background:transparent;border:1px solid var(--gold-dim);padding:13px 40px;cursor:pointer;transition:all .3s}
+.btn-primary:hover{background:rgba(201,168,76,.08);border-color:var(--gold)}
+.btn-secondary{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.12em;color:var(--ash-light);background:transparent;border:1px solid rgba(176,164,140,.2);padding:10px 28px;cursor:pointer;transition:all .3s}
+.btn-secondary:hover{border-color:rgba(176,164,140,.5);color:var(--parchment)}
+.t-hint{margin-top:16px;font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.12em;color:var(--ash);opacity:0;animation:up .9s ease 1.6s forwards}
+
+/* ═══ GAME HEADER ═══ */
+.g-hdr{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(201,168,76,.1);background:rgba(8,6,4,.85);backdrop-filter:blur(10px)}
+.g-hdr-left{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.15em;color:var(--ash-light)}
+.g-hdr-right{display:flex;align-items:center;gap:9px}
+.prog-dots{display:flex;gap:4px;align-items:center}
+.prog-dot{width:5px;height:5px;border-radius:50%;background:rgba(176,164,140,.18);transition:background .4s}
+.prog-dot.done{background:var(--gold-dim)}
+.prog-dot.now{background:var(--ember);box-shadow:0 0 6px rgba(200,75,26,.5)}
+.w-bar-wrap{display:flex;align-items:center;gap:6px}
+.w-label{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.1em;color:var(--ash)}
+.w-bar{width:60px;height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.w-fill{height:100%;border-radius:2px;background:rgba(201,168,76,.5);transition:width .6s ease,background .4s}
+.w-num{font-family:'Cinzel',serif;font-size:.95rem;font-weight:600;color:var(--gold);min-width:24px;text-align:right;transition:color .3s}
+.w-num.low{color:var(--ember)}
+
+/* ═══ STORY PANEL ═══ */
+.story-panel{padding:26px 22px 20px;flex:1}
+.s-act{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.2em;color:var(--gold-dim);margin-bottom:8px}
+.s-title{font-family:'IM Fell English',serif;font-size:1.45rem;color:var(--parchment);margin-bottom:18px;line-height:1.3}
+.s-text{font-size:1.02rem;line-height:1.88;color:var(--ash-light);font-style:italic}
+.s-text em{color:var(--parchment);font-style:normal}
+.s-rule{width:50px;height:1px;background:linear-gradient(90deg,var(--gold-dim),transparent);margin:18px 0;display:none}
+.c-label{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.2em;color:var(--ash);margin-bottom:10px;display:none}
+.choice-btn{display:block;width:100%;text-align:left;background:rgba(242,232,213,.03);border:1px solid rgba(201,168,76,.13);padding:13px 15px 13px 28px;margin-bottom:9px;cursor:pointer;transition:all .25s;font-family:'Cormorant Garamond',serif;font-size:.98rem;color:var(--ash-light);line-height:1.5;position:relative}
+.choice-btn::before{content:'›';position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--gold-dim);font-size:1.15rem;transition:all .2s}
+.choice-btn:hover{background:rgba(242,232,213,.07);border-color:rgba(201,168,76,.3);color:var(--parchment)}
+.choice-btn:hover::before{color:var(--gold);transform:translateY(-50%) translateX(3px)}
+.choice-btn.off{opacity:.3;cursor:not-allowed;pointer-events:none}
+.c-cost{font-size:.72rem;font-family:'Cinzel',serif;color:var(--ember-dim);letter-spacing:.07em;margin-left:7px}
+
+/* ═══ SPELL FORGE ═══ */
+.forge{background:rgba(8,6,4,.7);border-top:1px solid rgba(201,168,76,.1);padding:18px}
+.forge-lbl{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.2em;color:var(--gold-dim);margin-bottom:12px}
+.slots{display:flex;gap:5px;margin-bottom:12px;flex-wrap:wrap}
+.slot{flex:1;min-width:72px;height:40px;border:1px dashed rgba(201,168,76,.22);display:flex;align-items:center;justify-content:center;font-size:.72rem;color:rgba(176,164,140,.35);font-family:'Cinzel',serif;letter-spacing:.04em;cursor:pointer;transition:all .2s}
+.slot.set{border-style:solid;font-style:italic;font-family:'IM Fell English',serif;font-size:.9rem;letter-spacing:0;color:var(--parchment)}
+.slot.set.noun{border-color:rgba(59,42,90,.6);background:rgba(59,42,90,.14);color:#c5b8e0}
+.slot.set.verb{border-color:rgba(26,61,43,.6);background:rgba(26,61,43,.14);color:#a8ccb4}
+.slot.set.adj{border-color:rgba(90,42,14,.6);background:rgba(90,42,14,.14);color:#d4b090}
+.slot.set:hover{opacity:.65}
+.spell-out{min-height:26px;margin-bottom:10px;font-family:'IM Fell English',serif;font-style:italic;font-size:1rem;color:var(--parchment);text-align:center;opacity:.5;transition:opacity .3s}
+.spell-out.on{opacity:1;color:var(--gold)}
+.spell-fx{font-size:.75rem;color:var(--ash-light);text-align:center;min-height:18px;margin-bottom:11px;font-family:'Cinzel',serif;letter-spacing:.04em}
+.wgrps{display:flex;flex-direction:column;gap:9px;margin-bottom:12px}
+.wg-lbl{font-size:.58rem;font-family:'Cinzel',serif;letter-spacing:.14em;color:var(--ash);margin-bottom:5px}
+.wpills{display:flex;flex-wrap:wrap;gap:4px}
+.pill{padding:4px 11px;border:1px solid;font-size:.82rem;font-family:'IM Fell English',serif;font-style:italic;cursor:pointer;transition:all .18s;user-select:none}
+.pill.noun{border-color:rgba(59,42,90,.4);color:#c5b8e0;background:rgba(59,42,90,.07)}
+.pill.verb{border-color:rgba(26,61,43,.4);color:#a8ccb4;background:rgba(26,61,43,.07)}
+.pill.adj{border-color:rgba(90,42,14,.4);color:#d4b090;background:rgba(90,42,14,.07)}
+.pill.noun:hover{background:rgba(59,42,90,.2);border-color:rgba(59,42,90,.7)}
+.pill.verb:hover{background:rgba(26,61,43,.2);border-color:rgba(26,61,43,.7)}
+.pill.adj:hover{background:rgba(90,42,14,.2);border-color:rgba(90,42,14,.7)}
+.pill.used{opacity:.22;pointer-events:none}
+.cast-btn{width:100%;padding:12px;background:transparent;border:1px solid var(--ember-dim);font-family:'Cinzel',serif;font-size:.78rem;letter-spacing:.14em;color:var(--ember);cursor:pointer;transition:all .3s}
+.cast-btn:hover:not(:disabled){background:rgba(200,75,26,.09);border-color:var(--ember);box-shadow:0 0 18px rgba(200,75,26,.13)}
+.cast-btn:disabled{opacity:.28;cursor:not-allowed}
+
+/* ═══ COMBAT ═══ */
+.combat-area{padding:18px}
+.enemy-blk{text-align:center;margin-bottom:20px}
+.e-name{font-family:'Cinzel',serif;font-size:1.05rem;color:var(--parchment);margin-bottom:5px}
+.e-desc{font-size:.83rem;color:var(--ash-light);font-style:italic;margin-bottom:14px}
+.hp-lbl{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.14em;color:var(--ash);margin-bottom:4px}
+.hp-bar{height:5px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden}
+.hp-fill{height:100%;background:var(--ember-dim);border-radius:3px;transition:width .6s ease,background .4s}
+.e-phase{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.13em;text-align:center;margin-top:6px;min-height:16px;transition:color .5s}
+.clog-hist{background:rgba(0,0,0,.2);border:1px solid rgba(201,168,76,.07);padding:9px 12px;max-height:80px;overflow-y:auto;font-size:.76rem;color:var(--ash);font-style:italic;line-height:1.65;margin-bottom:7px}
+.clog-hist:empty{display:none}
+.clog{background:rgba(0,0,0,.3);border:1px solid rgba(201,168,76,.09);padding:10px 12px;min-height:46px;font-size:.86rem;color:var(--ash-light);font-style:italic;line-height:1.6;margin-bottom:14px}
+.clog .hit{color:var(--ember)}
+.clog .miss{color:var(--ash)}
+.clog .sp{color:var(--gold)}
+
+/* ═══ MAP ═══ */
+#screen-map{padding:0 0 60px}
+.map-wrap{max-width:400px;width:100%;margin:0 auto;padding:24px 20px}
+.map-title-lbl{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.2em;color:var(--gold-dim);margin-bottom:22px;text-align:center}
+.map-path{position:relative;display:flex;flex-direction:column;gap:0}
+.map-path::before{content:'';position:absolute;left:18px;top:20px;bottom:20px;width:1px;background:linear-gradient(180deg,rgba(201,168,76,.35),rgba(201,168,76,.08))}
+.map-stop{display:flex;align-items:flex-start;gap:15px;padding:11px 0;opacity:.32;transition:opacity .4s}
+.map-stop.vis,.map-stop.cur{opacity:1}
+.map-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--ash);background:var(--ash);flex-shrink:0;margin-top:5px;margin-left:15px;position:relative;z-index:1;transition:all .4s}
+.map-stop.vis .map-dot{background:var(--gold-dim);border-color:var(--gold)}
+.map-stop.cur .map-dot{background:var(--ember);border-color:var(--ember);box-shadow:0 0 9px rgba(200,75,26,.5);animation:pulse 2s infinite}
+.map-stop-name{font-family:'IM Fell English',serif;font-size:.98rem;color:var(--parchment);margin-bottom:2px}
+.map-stop.vis .map-stop-name{color:var(--ash-light)}
+.map-stop-sub{font-size:.76rem;color:var(--ash);font-style:italic}
+.map-spent{font-family:'Cinzel',serif;font-size:.6rem;color:var(--ember-dim);letter-spacing:.07em;margin-top:3px}
+.map-stats{margin-top:24px;padding-top:18px;border-top:1px solid rgba(201,168,76,.1)}
+.map-stats-lbl{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.17em;color:var(--ash);margin-bottom:11px}
+.map-stats-row{display:flex;gap:18px;flex-wrap:wrap}
+.mstat-n{font-family:'Cinzel',serif;font-size:1.2rem;display:block}
+.mstat-l{font-size:.62rem;color:var(--ash);font-family:'Cinzel',serif;letter-spacing:.08em}
+
+/* ═══ JOURNAL ═══ */
+#screen-journal{padding:0 0 60px}
+.journal-body{max-width:400px;width:100%;margin:0 auto;padding:24px 22px}
+.journal-lbl{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.2em;color:var(--gold-dim);margin-bottom:20px}
+.poem-list{list-style:none;border-left:1px solid rgba(201,168,76,.18);padding-left:16px}
+.poem-line{font-family:'IM Fell English',serif;font-style:italic;font-size:.98rem;color:var(--ash-light);line-height:2;opacity:0;animation:fadeIn .5s ease forwards}
+.poem-line .sw{color:var(--gold)}
+
+/* ═══ ENDING ═══ */
+#screen-ending{align-items:center;justify-content:flex-start;padding:0 0 80px}
+.end-hdr{width:100%;display:flex;align-items:center;justify-content:center;padding:16px 20px;border-bottom:1px solid rgba(201,168,76,.1);background:rgba(8,6,4,.85);backdrop-filter:blur(8px);font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.18em;color:var(--ash)}
+.end-body{display:flex;flex-direction:column;align-items:center;text-align:center;padding:40px 24px 60px;max-width:420px;width:100%}
+.end-emblem{width:60px;height:60px;margin-bottom:22px}
+.end-badge{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.2em;padding:4px 14px;display:inline-block;margin-bottom:18px}
+.end-title{font-family:'Cinzel',serif;font-size:1.5rem;color:var(--parchment);margin-bottom:15px}
+.end-text{font-family:'IM Fell English',serif;font-style:italic;font-size:1.05rem;color:var(--ash-light);line-height:1.9;max-width:330px;margin-bottom:28px}
+.end-stats{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;margin-bottom:24px}
+.end-stat-n{font-family:'Cinzel',serif;font-size:1.3rem;color:var(--gold);display:block}
+.end-stat-l{font-size:.65rem;color:var(--ash);font-family:'Cinzel',serif;letter-spacing:.08em}
+.end-poem{font-family:'IM Fell English',serif;font-style:italic;font-size:.92rem;color:var(--ash-light);line-height:2;border-top:1px solid rgba(201,168,76,.12);border-bottom:1px solid rgba(201,168,76,.12);padding:18px 0;margin-bottom:30px;width:100%}
+.end-poem .sw{color:var(--gold)}
+.end-dots-lbl{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.18em;color:var(--ash);margin-bottom:9px}
+.end-dots{display:flex;gap:9px;justify-content:center;margin-bottom:8px}
+.end-dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid rgba(201,168,76,.18);transition:all .3s}
+.end-dot.got{background:var(--gold-dim);border-color:var(--gold)}
+.end-sub{font-size:.68rem;color:var(--ash);font-style:italic;margin-bottom:28px}
+.btn-restart{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.14em;color:var(--ash);background:transparent;border:1px solid rgba(176,164,140,.18);padding:11px 30px;cursor:pointer;transition:all .3s}
+.btn-restart:hover{color:var(--ash-light);border-color:rgba(176,164,140,.4)}
+
+/* ═══ NOTIF ═══ */
+#notif{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(50px);background:rgba(20,15,8,.96);border:1px solid rgba(201,168,76,.18);padding:9px 18px;font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.09em;color:var(--ash-light);z-index:300;pointer-events:none;transition:transform .4s cubic-bezier(.34,1.56,.64,1);white-space:nowrap}
+#notif.on{transform:translateX(-50%) translateY(0)}
+
+/* ═══ FLOATERS ═══ */
+.floater{position:fixed;font-family:'IM Fell English',serif;font-style:italic;color:var(--gold);pointer-events:none;z-index:250;animation:floatUp 1.3s ease forwards;font-size:1.3rem}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}60%{opacity:.5;transform:translateY(-45px) scale(.75)}100%{opacity:0;transform:translateY(-90px) scale(.4)}}
+
+/* ═══ PARTICLES ═══ */
+.particles{position:fixed;inset:0;pointer-events:none;z-index:1;overflow:hidden}
+.part{position:absolute;border-radius:50%;animation:drift linear infinite}
+@keyframes drift{from{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:.8}90%{opacity:.3}to{transform:translateY(-20px) translateX(var(--dx));opacity:0}}
+
+/* ═══ ANIMATIONS ═══ */
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pulse{0%,100%{box-shadow:0 0 9px rgba(200,75,26,.5)}50%{box-shadow:0 0 18px rgba(200,75,26,.8)}}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="particles" id="particles"></div>
+<div id="fade-overlay"></div>
+<div id="notif"></div>
+
+<!-- ═══════════════ TITLE ═══════════════ -->
+<div id="screen-title" class="screen active">
+  <svg class="t-emblem" viewBox="0 0 72 72" fill="none">
+    <circle cx="36" cy="36" r="34" stroke="rgba(201,168,76,.22)" stroke-width=".5"/>
+    <circle cx="36" cy="36" r="26" stroke="rgba(201,168,76,.12)" stroke-width=".5"/>
+    <path d="M36 10 L36 62 M16 28 L56 28 M14 46 L58 46" stroke="rgba(201,168,76,.3)" stroke-width=".5"/>
+    <path d="M36 12 C30 22 24 18 20 26 C16 34 22 36 20 44 C18 52 26 54 36 64 C46 54 54 52 52 44 C50 36 56 34 52 26 C48 18 42 22 36 12Z" stroke="rgba(201,168,76,.45)" stroke-width=".8" fill="rgba(201,168,76,.04)"/>
+    <circle cx="36" cy="36" r="3.5" fill="rgba(201,168,76,.4)"/>
+  </svg>
+  <h1 class="t-title">Слово<br>и Пепел</h1>
+  <p class="t-sub">Последний Писарь</p>
+  <div class="t-rule"></div>
+  <p class="t-verse">Когда слова гаснут —<br>гаснет мир.<br>У тебя осталось<br>сорок восемь.<br><br><span style="font-size:.85rem;opacity:.6">История объяснит остальное.</span></p>
+  <div class="t-btns">
+    <button class="btn-primary" onclick="startGame()">НАЧАТЬ</button>
+  </div>
+  <p class="t-hint">▸ 48 живых слов · 4 акта · 6 финалов</p>
+</div>
+
+<!-- ═══════════════ MAP ═══════════════ -->
+<div id="screen-map" class="screen">
+  <div class="g-hdr">
+    <span class="g-hdr-left">ПУТЬ ПИСАРЯ</span>
+    <div class="g-hdr-right">
+      <div class="w-bar-wrap">
+        <span class="w-label">СЛОВА</span>
+        <div class="w-bar"><div class="w-fill" id="m-wbar"></div></div>
+        <span class="w-num" id="m-wnum">48</span>
+      </div>
+    </div>
+  </div>
+  <div class="map-wrap">
+    <div class="map-title-lbl">ДОРОЖНАЯ КАРТА</div>
+    <div class="map-path">
+      <div class="map-stop" id="ms-village">
+        <div class="map-dot"></div>
+        <div>
+          <div class="map-stop-name">Деревня без имени</div>
+          <div class="map-stop-sub">Акт I · Первый свет, первая цена</div>
+          <div class="map-spent" id="msp-village"></div>
+        </div>
+      </div>
+      <div class="map-stop" id="ms-city">
+        <div class="map-dot"></div>
+        <div>
+          <div class="map-stop-name">Город Молчальников</div>
+          <div class="map-stop-sub">Акт II · Враг говорит твоим языком</div>
+          <div class="map-spent" id="msp-city"></div>
+        </div>
+      </div>
+      <div class="map-stop" id="ms-source">
+        <div class="map-dot"></div>
+        <div>
+          <div class="map-stop-name">Исток</div>
+          <div class="map-stop-sub">Акт III · Откуда пришла тишина</div>
+          <div class="map-spent" id="msp-source"></div>
+        </div>
+      </div>
+      <div class="map-stop" id="ms-end">
+        <div class="map-dot"></div>
+        <div>
+          <div class="map-stop-name">Последнее слово</div>
+          <div class="map-stop-sub">Финал · Всё зависит от твоего пути</div>
+        </div>
+      </div>
+    </div>
+    <div class="map-stats">
+      <div class="map-stats-lbl">СТАТИСТИКА ПУТИ</div>
+      <div class="map-stats-row">
+        <div><span class="mstat-n" style="color:var(--gold)" id="ms-used">0</span><span class="mstat-l">потрачено</span></div>
+        <div><span class="mstat-n" style="color:var(--ember)" id="ms-left">48</span><span class="mstat-l">осталось</span></div>
+        <div><span class="mstat-n" style="color:var(--ash-light)" id="ms-spells">0</span><span class="mstat-l">заклинаний</span></div>
+      </div>
+    </div>
+    <div id="map-choices-summary" style="margin-top:18px;padding:12px 0;border-top:1px solid rgba(201,168,76,.1);font-size:.78rem;color:var(--ash);line-height:1.8;font-style:italic;min-height:20px"></div>
+    <button class="choice-btn" style="margin-top:14px" onclick="mapContinue()">Продолжить →</button>
+  </div>
+</div>
+
+<!-- ═══════════════ STORY ═══════════════ -->
+<div id="screen-story" class="screen">
+  <div class="g-hdr">
+    <span class="g-hdr-left" id="s-act-hdr">АКТ I</span>
+    <div class="g-hdr-right">
+      <div class="prog-dots" id="s-dots">
+        <div class="prog-dot now"></div>
+        <div class="prog-dot"></div>
+        <div class="prog-dot"></div>
+        <div class="prog-dot"></div>
+      </div>
+      <div class="w-bar-wrap">
+        <span class="w-label">СЛОВА</span>
+        <div class="w-bar"><div class="w-fill" id="s-wbar"></div></div>
+        <span class="w-num" id="s-wnum">48</span>
+      </div>
+    </div>
+  </div>
+  <div class="story-panel">
+    <div class="s-act" id="s-act-lbl"></div>
+    <h2 class="s-title" id="s-title"></h2>
+    <div class="s-text" id="s-text"></div>
+    <div class="s-rule" id="s-rule"></div>
+    <div class="c-label" id="c-label">ЧТО ДЕЛАЕТ КАЭЛЬ</div>
+    <div id="choices"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ COMBAT ═══════════════ -->
+<div id="screen-combat" class="screen">
+  <div class="g-hdr">
+    <span class="g-hdr-left" id="c-act-hdr">АКТ III</span>
+    <div class="g-hdr-right">
+      <div class="w-bar-wrap">
+        <span class="w-label">СЛОВА</span>
+        <div class="w-bar"><div class="w-fill" id="c-wbar"></div></div>
+        <span class="w-num" id="c-wnum">48</span>
+      </div>
+    </div>
+  </div>
+  <div class="combat-area">
+    <div class="enemy-blk">
+      <div class="e-name" id="e-name"></div>
+      <div class="e-desc" id="e-desc"></div>
+      <div class="hp-lbl">СИЛА ВРАГА</div>
+      <div class="hp-bar"><div class="hp-fill" id="e-hp"></div></div>
+      <div class="e-phase" id="e-phase"></div>
+    </div>
+    <div class="clog-hist" id="clog-hist"></div>
+    <div class="clog" id="clog">Произнеси заклинание, Писарь.</div>
+  </div>
+  <div class="forge">
+    <div class="forge-lbl">КУЗНИЦА СЛОВ</div>
+    <div class="slots">
+      <div class="slot" id="sl-adj" onclick="clrSlot('adj')">прил.</div>
+      <div class="slot" id="sl-noun" onclick="clrSlot('noun')">сущ.</div>
+      <div class="slot" id="sl-verb" onclick="clrSlot('verb')">гл.</div>
+    </div>
+    <div class="spell-out" id="spell-out">– – –</div>
+    <div class="spell-fx" id="spell-fx"></div>
+    <div class="wgrps" id="wgrps"></div>
+    <button class="cast-btn" id="cast-btn" disabled onclick="castSpell()">ПРОИЗНЕСТИ</button>
+  </div>
+</div>
+
+<!-- ═══════════════ JOURNAL ═══════════════ -->
+<div id="screen-journal" class="screen">
+  <div class="g-hdr">
+    <span class="g-hdr-left">ДНЕВНИК ПИСАРЯ</span>
+    <div class="g-hdr-right">
+      <div class="w-bar-wrap">
+        <span class="w-label">СЛОВА</span>
+        <div class="w-bar"><div class="w-fill" id="j-wbar"></div></div>
+        <span class="w-num" id="j-wnum">48</span>
+      </div>
+    </div>
+  </div>
+  <div class="journal-body">
+    <div class="journal-lbl">ЗАКЛИНАНИЯ — ПОЭМА КАЭЛЯ</div>
+    <ul class="poem-list" id="poem-list"></ul>
+    <button class="choice-btn" style="margin-top:22px" onclick="jrnContinue()">Продолжить путь</button>
+  </div>
+</div>
+
+<!-- ═══════════════ ENDING ═══════════════ -->
+<div id="screen-ending" class="screen">
+  <div class="end-hdr" id="end-hdr-lbl">ФИНАЛ</div>
+  <div class="end-body">
+    <svg class="end-emblem" id="end-emblem" viewBox="0 0 60 60" fill="none"></svg>
+    <div class="end-badge" id="end-badge"></div>
+    <div class="end-title" id="end-title"></div>
+    <div class="end-text" id="end-text"></div>
+    <div class="end-stats">
+      <div><span class="end-stat-n" id="end-used">0</span><span class="end-stat-l">ПОТРАЧЕНО</span></div>
+      <div><span class="end-stat-n" id="end-left">48</span><span class="end-stat-l">ОСТАЛОСЬ</span></div>
+      <div><span class="end-stat-n" id="end-sp">0</span><span class="end-stat-l">ЗАКЛИНАНИЙ</span></div>
+    </div>
+    <div class="end-poem" id="end-poem"></div>
+    <div class="end-dots-lbl">ОТКРЫТЫЕ ФИНАЛЫ</div>
+    <div class="end-dots">
+      <div class="end-dot" id="dot-light" title="Свет"></div>
+      <div class="end-dot" id="dot-ash" title="Пепел"></div>
+      <div class="end-dot" id="dot-echo" title="Эхо"></div>
+      <div class="end-dot" id="dot-silence" title="Молчание"></div>
+      <div class="end-dot" id="dot-peace" title="Мир"></div>
+      <div class="end-dot" id="dot-names" title="Имена"></div>
+    </div>
+    <div class="end-sub">Пройди снова, чтобы открыть все шесть финалов</div>
+    <button class="btn-restart" onclick="restartGame()">Начать заново</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+const G = {
+  words: 48, spells: [], combatLog: [],
+  d: { helpedVillage:false, paidMole:false, listenedVeia:false,
+       usedWords:0, choseSilence:false, choseNames:false },
+  slots: { adj:null, noun:null, verb:null },
+  mapNext: null, jrnNext: null, combatNext: null,
+  actNum: 1, eHp: 100, eMaxHp: 100, combatTurn: 0,
+  unlocked: JSON.parse(localStorage.getItem('woa_e')||'[]'),
+};
+
+// ═══════════════════════════════════════════════════
+//  SOUND
+// ═══════════════════════════════════════════════════
+let AC = null;
+const ac = () => { if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)(); return AC; };
+function tone(f,t,d,g=.12,dl=0) {
+  try {
+    const c=ac(), o=c.createOscillator(), gn=c.createGain();
+    o.connect(gn); gn.connect(c.destination);
+    o.type=t; o.frequency.setValueAtTime(f,c.currentTime+dl);
+    o.frequency.exponentialRampToValueAtTime(f*.5,c.currentTime+dl+d);
+    gn.gain.setValueAtTime(0,c.currentTime+dl);
+    gn.gain.linearRampToValueAtTime(g,c.currentTime+dl+.02);
+    gn.gain.exponentialRampToValueAtTime(.001,c.currentTime+dl+d);
+    o.start(c.currentTime+dl); o.stop(c.currentTime+dl+d+.05);
+  } catch(e){}
+}
+function sndPage() {
+  try {
+    const c=ac(), buf=c.createBuffer(1,c.sampleRate*.12,c.sampleRate), d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(c.sampleRate*.035));
+    const s=c.createBufferSource(), f=c.createBiquadFilter(), g=c.createGain();
+    f.type='bandpass'; f.frequency.value=2200; f.Q.value=.5; g.gain.value=.07;
+    s.buffer=buf; s.connect(f); f.connect(g); g.connect(c.destination); s.start();
+  } catch(e){}
+}
+function sndSpell() { tone(220,'sine',.6,.11); tone(330,'sine',.4,.05,.1); tone(440,'sine',.3,.04,.2); }
+function sndLoss()  { tone(300,'sine',.7,.09); tone(150,'sine',.5,.07,.3); }
+function sndEnd(t)  { ({light:[260,330,392,520],ash:[180,220,260],echo:[300,375,450,300],silence:[120,90]}[t]||[]).forEach((f,i)=>tone(f,'sine',.8,.07,i*.3)); }
+
+// ═══════════════════════════════════════════════════
+//  WORD DATA
+// ═══════════════════════════════════════════════════
+const WD = {
+  noun:[
+    {w:'огонь',pow:8,tag:'урон',cost:2},{w:'тень',pow:4,tag:'скрытность',cost:2},
+    {w:'время',pow:6,tag:'контроль',cost:2},{w:'земля',pow:7,tag:'защита',cost:2},
+    {w:'свет',pow:5,tag:'исцеление',cost:2},{w:'ветер',pow:4,tag:'урон',cost:2},
+  ],
+  verb:[
+    {w:'поглотит',mult:1.5,cost:2},{w:'разрушит',mult:1.3,cost:2},
+    {w:'остановит',mult:.8,cost:2},{w:'скроет',mult:.6,cost:2},{w:'вернёт',mult:1.0,cost:2},
+  ],
+  adj:[
+    {w:'древний',bon:3,desc:'игнорирует защиту',cost:1},
+    {w:'слепой',bon:0,desc:'враг теряет ход',cost:1},
+    {w:'голодный',bon:2,desc:'восстанавливает 1 слово',cost:1,restore:1},
+    {w:'тихий',bon:1,desc:'не тратит ход',cost:1},
+    {w:'последний',bon:5,desc:'огромная сила',cost:1},
+  ],
+};
+
+// ═══════════════════════════════════════════════════
+//  STORY DATA  (~90 scenes, ~2 hours playtime)
+// ═══════════════════════════════════════════════════
+const STORY = [
+
+// ╔══════════════════════════════════════════════════╗
+// ║  ПРОЛОГ — ДОРОГА                                ║
+// ╚══════════════════════════════════════════════════╝
+
+{ id:'prologue', act:'ПРОЛОГ', an:1, bg:'title',
+  title:'Сорок восемь слов',
+  text:`Тридцать лет назад монастырь сгорел ночью.<br><br>Каэль не был внутри — ушёл за едой в ближайшую деревню, вернулся на рассвете. Застал пепел и тишину.<br><br>Одна вещь уцелела у ворот — рукопись в кожаном переплёте. Он поднял её.<br><br>Страницы были тёплыми. <em>Не от огня — от чего-то другого. Как будто внутри каждой буквы горел маленький свет.</em><br><br>Сорок восемь страниц. На каждой — одно живое слово. Последнее, что осталось от Ордена Писарей.`,
+  ch:[{t:'Дальше',nx:'prologue_2'}]
+},
+
+{ id:'prologue_2', act:'ПРОЛОГ', an:1, bg:'title',
+  title:'Что такое живое слово',
+  text:`Каэль знал, что это такое — живые слова. Он учился с детства.<br><br>Обычное слово — это звук. Просто звук. Люди говорят, спорят, смеются, поют — и всё это обычная речь. Она никуда не исчезает.<br><br>Живое слово — другое. <em>Это слово, произнесённое с намерением изменить реальность.</em> Когда Писарь говорил «исцелись» над раной — рана затягивалась. Когда говорил «расти» над полем — поле родило.<br><br>Живые слова стоят дорого. Каждое — один раз. Произнёс — ушло навсегда. Страница чернеет, буква гаснет.<br><br><em>В рукописи их было сорок восемь. Теперь — меньше.</em>`,
+  ch:[{t:'Дальше',nx:'prologue_3'}]
+},
+
+{ id:'prologue_3', act:'ПРОЛОГ', an:1, bg:'title',
+  title:'Почему слова уходят',
+  text:`Тридцать лет Каэль шёл и думал об одном: <em>почему живые слова исчезают из мира?</em><br><br>Раньше их было у всех. Кузнец знал слово «прочный». Лекарь — слово «живи». Пахарь — «расти». Простые, обычные люди — и у каждого был маленький огонь.<br><br>Потом огни начали гаснуть. Сначала у одних, потом у других. Орден изучал это и нашёл ответ — <em>что-то поглощает живые слова. Как паразит, как тень, как рот без тела.</em><br><br>Они назвали это Безмолвием.<br><br>Оно живёт в пространстве между буквами. Каждое произнесённое заклинание кормит его. Оно было всегда — но раньше было маленьким. Теперь выросло.<br><br><em>И единственное место, где его можно найти — Исток. На севере. Там, куда идёт Каэль.</em>`,
+  ch:[{t:'Дальше',nx:'prologue_4'}]
+},
+
+{ id:'prologue_4', act:'ПРОЛОГ', an:1, bg:'title',
+  title:'Что было тридцать лет назад',
+  text:`Старший Писарь решил убить Безмолвие силой.<br><br>Он собрал всю мощь Ордена в одно слово — самое концентрированное заклинание за всю историю. Пошёл к Истоку и произнёс его.<br><br>Безмолвие не умерло. Слово оказалось слишком большим — оно резонировало, расходилось кругами. В шести лигах от Истока стоял город Алос. Три тысячи человек.<br><br><em>Города больше нет.</em><br><br>В ту же ночь кто-то сжёг монастырь. Орден прекратил существование.<br><br>Каэль выжил случайно. Он не знает — хорошо это или плохо. Просто факт. <em>И теперь у него сорок восемь слов, дорога на север, и вопрос: что делать с тем, что нельзя победить силой.</em>`,
+  ch:[{t:'Начать путь',nx:'i_road'}]
+},
+
+{ id:'i_road', act:'АКТ I', an:1, bg:'village',
+  title:'Дорога в деревню',
+  text:`Дорога была пыльной и узкой. Третий день от последнего жилья — и в животе пусто.<br><br>На повороте Каэль увидел мальчика лет десяти. Тот сидел прямо в пыли и смотрел на муравья — неотрывно, как будто муравей был важнее всего на свете.<br><br>— Далеко ли деревня? — спросил Каэль.<br><br>Мальчик посмотрел на него. Потом на рукопись под мышкой. Потом снова на муравья.<br><br>— Там, — сказал он и показал рукой. Больше ничего.<br><br><em>Каэль заметил: мальчик говорит нормально. Обычные слова — они никуда не делись. Только живые уходят. Это всегда нужно объяснять людям, которые не понимают разницы.</em>`,
+  ch:[{t:'Спросить мальчика о деревне',nx:'i_boy'},{t:'Идти в указанном направлении',nx:'i_arrival'}]
+},
+
+{ id:'i_boy', act:'АКТ I', an:1, bg:'village',
+  title:'Мальчик на дороге',
+  text:`— Ты из деревни? — спросил Каэль, присев рядом.<br><br>— Да.<br><br>— Как её называют?<br><br>Мальчик надолго замолчал. Потом:<br><br>— Никак. Раньше называли. Я не помню как. Мама тоже не помнит. Говорит, имя ушло.<br><br>Каэль посмотрел на рукопись. <em>Слово «имя» светилось сквозь страницу — самое тёплое из всех.</em><br><br>— Ты знаешь своё имя? — спросил он.<br><br>Мальчик покачал головой. Но как-то без грусти — как будто это был просто факт, вроде того что небо серое.<br><br>— Нормально, — сказал он. — Муравьи тоже без имён.`,
+  ch:[{t:'«Хочешь, я верну твоё имя?»',nx:'i_boy_offer'},{t:'Идти в деревню',nx:'i_arrival'}]
+},
+
+{ id:'i_boy_offer', act:'АКТ I', an:1, bg:'village',
+  title:'Предложение',
+  text:`— Хочешь, я верну твоё имя?<br><br>Мальчик наконец оторвал взгляд от муравья. Посмотрел на Каэля серьёзно, как взрослый.<br><br>— А оно где-то есть?<br><br>— Внутри тебя. Просто забылось. Мне нужно только слово — и ты вспомнишь.<br><br>Мальчик думал долго. Потом покачал головой.<br><br>— Не надо. — Он снова посмотрел на муравья. — Если имя уйдёт снова, будет хуже, чем когда его вообще не было. <em>Лучше не иметь, чем потерять второй раз.</em><br><br>Каэль встал. Мальчик был мудрее многих взрослых, которых он встречал.`,
+  ch:[{t:'Идти в деревню',nx:'i_arrival'}]
+},
+
+{ id:'i_arrival', act:'АКТ I', an:1, bg:'village',
+  title:'Деревня',
+  text:`Деревня лежала в низине — серая и тихая, как забытый сон.<br><br>Первое, что увидел Каэль: дети у колодца. Пятеро, сидят в ряд, не играют. Второе: толстый мужчина на площади с весами. Третье: поля — вскопаны, но не засеяны.<br><br>Четвёртое — и это поразило его больше всего: <em>никто не разговаривал.</em> Не потому что молчальники — они передавали знаки, жестикулировали. Просто слова казались им слишком дорогими, чтобы тратить их на обычные вещи.<br><br>Он прошёл через площадь. Несколько человек посмотрели на рукопись у него под мышкой — и отвели глаза. Как смотрят на чужое богатство.`,
+  ch:[
+    {t:'Подойти к детям у колодца',nx:'i_well'},
+    {t:'Подойти к торговцу с весами',nx:'i_mole'},
+    {t:'Поговорить со старухой у крайней избы',nx:'i_elder'},
+    {t:'Зайти в таверну',nx:'i_tavern'}
+  ]
+},
+
+{ id:'i_well', act:'АКТ I', an:1, bg:'village',
+  title:'Дети у колодца',
+  text:`Пятеро детей сидели в ряд на краю колодца. Когда Каэль подошёл, они не убежали — просто смотрели.<br><br>Самая старшая, девочка лет двенадцати, написала что-то на дощечке и показала: <em>«Ты Писарь?»</em><br><br>— Да.<br><br>Она стёрла и написала снова: <em>«У тебя есть слово "имя"?»</em><br><br>— Есть.<br><br>Долгая пауза. Потом она написала медленно, выводя каждую букву: <em>«Меня звали Сива. Я забыла что это значит но помню что было».</em><br><br>Маленький мальчик рядом с ней тронул её за руку и покачал головой — <em>не проси</em>. Она опустила дощечку.`,
+  ch:[
+    {t:'Вернуть Сиве имя — произнести слово',cost:2,nx:'i_siva_name'},
+    {t:'Поговорить с мальчиком который её остановил',nx:'i_well_boy'},
+    {t:'Пообещать подумать — сначала осмотреться',nx:'i_arrival_2'}
+  ]
+},
+
+{ id:'i_well_boy', act:'АКТ I', an:1, bg:'village',
+  title:'Тим',
+  text:`— Зачем ты её остановил? — спросил Каэль мальчика.<br><br>Он написал на дощечке Сивы: <em>«Потому что нельзя брать от незнакомцев»</em>.<br><br>— Это мудро. Но я не хочу плохого.<br><br><em>«Все говорят что не хотят плохого»</em>.<br><br>— Ты знаешь своё имя?<br><br>Долгая пауза. <em>«Тим. Я не забыл. Я сам держу»</em>.<br><br>Каэль присел перед ним. — Как ты его держишь?<br><br><em>«Каждое утро говорю себе. Шёпотом. Чтобы оно не ушло»</em>.<br><br>Каэль смотрел на мальчика. <em>Тим каждое утро шептал своё имя — и это удерживало его там, где другие теряли.</em>`,
+  ch:[
+    {t:'Дать Тиму что-нибудь за его мудрость',nx:'i_tim_gift',cost:1},
+    {t:'Вернуть имя Сиве',cost:2,nx:'i_siva_name'},
+    {t:'Идти к торговцу',nx:'i_mole'}
+  ]
+},
+
+{ id:'i_tim_gift', act:'АКТ I', an:1, bg:'village',
+  title:'Подарок',
+  text:`Каэль открыл рукопись и нашёл слово «стойкость».<br><br>Он не произнёс его вслух — только написал пальцем в воздухе, перед лицом Тима. Тим почувствовал — моргнул, удивился, положил руку на грудь.<br><br>Страница не почернела полностью — только краешек. <em>Написанное в воздухе стоит меньше, чем произнесённое вслух.</em><br><br>Тим написал на дощечке: <em>«Спасибо. Я буду держать это тоже»</em>.<br><br>Сива смотрела с завистью. Потом написала: <em>«Несправедливо»</em>. И улыбнулась — впервые.`,
+  ch:[
+    {t:'Вернуть Сиве имя',cost:2,nx:'i_siva_name'},
+    {t:'Идти дальше — к торговцу',nx:'i_mole'}
+  ],
+  fn:()=>{ G.d.metTim=true; }
+},
+
+{ id:'i_siva_name', act:'АКТ I', an:1, bg:'village_names',
+  title:'Сива',
+  text:`Каэль произнёс слово тихо — почти шёпотом, чтобы остальные дети не слышали.<br><br><em>Что-то щёлкнуло в воздухе — как лопнувшая струна, которую давно не трогали.</em><br><br>Девочка вздрогнула. Потом подняла лицо. В глазах — что-то менялось. Потом:<br><br>— Сива, — сказала она. Вслух. Первое слово за несколько минут. — Я Сива.<br><br>Тим посмотрел на неё — и впервые за весь разговор тоже улыбнулся.<br><br>Страница рукописи потемнела. <em>Одно слово ушло. Как выдох в мороз — был, и растворился.</em><br><br>Сива взяла Каэля за руку и долго не отпускала.`,
+  ch:[{t:'Поговорить с Сивой',nx:'i_siva_talk'},{t:'Идти к торговцу',nx:'i_mole'}],
+  fn:()=>G.d.helpedVillage=true
+},
+
+{ id:'i_siva_talk', act:'АКТ I', an:1, bg:'village',
+  title:'Разговор с Сивой',
+  text:`— Расскажи мне про Писарей, — попросила Сива. Она говорила осторожно, как человек, который заново учится пользоваться чем-то хрупким.<br><br>— Мы хранили живые слова. Записывали их, чтобы не терялись.<br><br>— Почему они теряются?<br><br>— Потому что есть... тьма. Которая их ест.<br><br>Сива нахмурилась. — И ты идёшь её остановить?<br><br>— Пытаюсь. — Каэль помолчал. — Не знаю, получится ли.<br><br>— У тебя сколько слов осталось?<br><br>— Сорок шесть.<br><br>Она долго считала что-то на пальцах. Потом серьёзно сказала:<br><br>— <em>Береги их. Ты им нужен больше, чем они тебе.</em>`,
+  ch:[{t:'Попрощаться и идти к торговцу',nx:'i_mole'},{t:'Попросить совета у Сивы про деревню',nx:'i_siva_advice'}]
+},
+
+{ id:'i_siva_advice', act:'АКТ I', an:1, bg:'village',
+  title:'Совет Сивы',
+  text:`— Что мне знать о вашей деревне? — спросил Каэль.<br><br>— Моль нехороший, — сказала Сива сразу. — Он продаёт слова, которые не его. Дедушка говорил — Моль был в каком-то Ордене. Давно. Сбежал оттуда.<br><br>— А ещё?<br><br>— Страж у северных ворот — добрый. Он раньше был учителем. У него записная книжка с хорошими словами, которые он держит для себя. Не отдаёт, но покажет если попросить вежливо.<br><br>— Спасибо, Сива.<br><br>Она пожала плечами с видом человека, который просто говорит очевидные вещи. Потом добавила вполголоса:<br><br><em>— И не ешь ничего у Моля. Он подмешивает в еду слова чтобы люди возвращались.</em>`,
+  ch:[{t:'Идти к Молю',nx:'i_mole'},{t:'Сначала к Стражу у северных ворот',nx:'i_guard'}]
+},
+
+{ id:'i_elder', act:'АКТ I', an:1, bg:'village',
+  title:'Старая Марта',
+  text:`Старуха сидела у избы и чинила сеть — хотя рыбной реки поблизости не было. Когда Каэль подошёл, она не удивилась.<br><br>— Писарь, — сказала она. — Последний раз видела Писаря лет сорок назад. Молодой был. Весёлый. — Она не подняла взгляда от сети. — Куда делся, не знаю.<br><br>— Орден сожгли тридцать лет назад.<br><br>— Знаю. Я тогда плакала. — Пауза. — Не из-за Ордена. Из-за слов. Они уходят быстрее, чем появляются.<br><br>Она наконец посмотрела на него. Глаза у неё были острыми.<br><br>— Ты к Молю идёшь?<br><br>— Наверное.<br><br>— Осторожнее. <em>Он продаёт то, что ему не принадлежит. И покупает то, о чём ты потом жалеешь.</em>`,
+  ch:[{t:'Спросить о деревне подробнее',nx:'i_elder_story'},{t:'Идти к Молю',nx:'i_mole'}]
+},
+
+{ id:'i_elder_story', act:'АКТ I', an:1, bg:'village',
+  title:'История Марты',
+  text:`— Расскажи о деревне, — попросил Каэль.<br><br>Марта отложила сеть.<br><br>— Раньше тут было хорошо. Пятьсот человек. Слова работали. Пахарь говорил «расти» — и росло. Повитуха говорила «живи» — и жили. А потом... сначала слово «расти» перестало. Потом «живи». Потом другие.<br><br>Она посмотрела на колодец.<br><br>— Дети перестали учить слова первыми. Зачем учить то, что не работает? <em>И вот — они уже не помнят своих имён.</em> А имя — это ведь не заклинание. Это просто... кто ты есть.<br><br>— Понимаю.<br><br>— Нет, не понимаешь. — Она снова взяла сеть. — Когда у тебя есть имя — ты ещё не понимаешь что это. <em>Понимаешь только когда теряешь.</em>`,
+  ch:[{t:'Попросить Марту о чём-нибудь',nx:'i_elder_ask'},{t:'Идти к Молю',nx:'i_mole'}]
+},
+
+{ id:'i_elder_ask', act:'АКТ I', an:1, bg:'village',
+  title:'Просьба Марты',
+  text:`— Ты можешь кое-что для меня сделать? — спросила Марта неожиданно.<br><br>— Если смогу.<br><br>— Слово «помни». — Она смотрела прямо. — Я скоро умру. Не скоро-скоро, но скоро. И я хочу, чтобы те, кто останется — помнили. Не меня конкретно. Просто — <em>помнили</em>. Что была деревня, что были слова, что жили люди.<br><br>Каэль молчал. Слово «помни» было у него в рукописи. Это стоило бы двух слов.<br><br>— Ты можешь дать это всей деревне сразу? — тихо спросила она.<br><br>— Нет. Только одному человеку. Потом оно уйдёт.<br><br>— Тогда дай мне. <em>Я успею передать дальше.</em>`,
+  ch:[
+    {t:'Дать Марте слово «помни»',cost:2,nx:'i_elder_gift'},
+    {t:'Объяснить что не можешь тратить слова',nx:'i_elder_refuse'}
+  ]
+},
+
+{ id:'i_elder_gift', act:'АКТ I', an:1, bg:'village',
+  title:'Слово для Марты',
+  text:`Каэль произнёс слово. Страница потемнела.<br><br>Марта сидела прямо, зажмурившись. Потом выдохнула медленно.<br><br>— Да, — сказала она. — Да. Вот оно.<br><br>Она открыла глаза. В них было что-то, чего раньше не было — <em>не радость, что-то более тихое. Как будто что-то встало на место.</em><br><br>— Спасибо, Писарь. — Она снова взяла сеть. — Иди к Молю. Только помни, что он скажет — это правда. Но не вся правда. <em>Он всегда рассказывает правду так, чтобы ты сам сделал неправильный вывод.</em>`,
+  ch:[{t:'Идти к Молю',nx:'i_mole'}],
+  fn:()=>G.d.helpedMartha=true
+},
+
+{ id:'i_elder_refuse', act:'АКТ I', an:1, bg:'village',
+  title:'Отказ',
+  text:`— Я не могу. Мне нужно каждое слово для пути на север.<br><br>Марта кивнула без обиды.<br><br>— Понимаю. Не держу зла. — Пауза. — Только знай: когда идёшь с такой книгой — ты несёшь чужое. Не своё. И рано или поздно книга потребует — <em>трать</em>. — Она вернулась к сети. — Это не угроза. Просто то, что я видела за восемьдесят лет.`,
+  ch:[{t:'Идти к Молю',nx:'i_mole'}]
+},
+
+{ id:'i_guard', act:'АКТ I', an:1, bg:'village',
+  title:'Страж',
+  text:`У северных ворот — два столба и верёвка между ними. Страж сидел на чурбаке и читал потрёпанную книжку в кожаном переплёте.<br><br>Он был немолодой, с аккуратной бородой. Посмотрел на Каэля, на рукопись, снова на Каэля.<br><br>— Писарь. — Не вопрос, констатация. — Давно.<br><br>— Вы были учителем?<br><br>— До. — Он закрыл книжку. — Когда слова ещё работали, я учил детей читать. Теперь незачем. Но привычка осталась.<br><br>— Сива сказала, у вас есть хорошие слова.<br><br>Он помолчал. Потом открыл книжку на случайной странице. Показал Каэлю. Там было написано одно слово — крупно, красивым почерком: <em>«Надежда»</em>.<br><br>— Не живое, — сказал он. — Просто написанное. Но иногда этого хватает.`,
+  ch:[
+    {t:'Попросить что-нибудь из его записей',nx:'i_guard_ask'},
+    {t:'Рассказать ему про север и Безмолвие',nx:'i_guard_tell'},
+    {t:'Идти к Молю',nx:'i_mole'}
+  ]
+},
+
+{ id:'i_guard_tell', act:'АКТ I', an:1, bg:'village',
+  title:'Рассказ Стражу',
+  text:`Каэль рассказал ему — коротко. Про Безмолвие, про Орден, про то, куда идёт.<br><br>Страж слушал не перебивая. Потом долго молчал.<br><br>— Значит, это не просто оскудение, — сказал он наконец. — Это его работа.<br><br>— Да.<br><br>— И чем больше слов произносят — тем оно сильнее.<br><br>— Да.<br><br>Он посмотрел на свою книжку.<br><br>— Тогда мы невольно помогаем ему. Каждый раз, когда произносим что-то важное. — Пауза. — <em>Это чудовищно несправедливо. Само существование языка его кормит.</em><br><br>— Да.<br><br>Он встал, протянул Каэлю книжку.<br><br>— Возьми. На севере пригодится. Там написано всё, что я помнил важного за всю жизнь. Не живые слова. Но иногда <em>написанное</em> важнее живого.`,
+  ch:[{t:'Взять книжку',nx:'i_guard_book'},{t:'Отказаться — она нужна ему',nx:'i_mole'}]
+},
+
+{ id:'i_guard_book', act:'АКТ I', an:1, bg:'village',
+  title:'Книжка учителя',
+  text:`Каэль взял книжку. Она была лёгкой и пахла воском.<br><br>— Я прочту, — пообещал он.<br><br>— Не надо торопиться. — Страж сел обратно на чурбак, теперь без книжки. Смотрел на северную дорогу. — Знаешь, я тридцать лет думал, что слова уходят потому что люди стали меньше ценить их. Не следили. Бросали как мусор. — Он помолчал. — А оказывается, там на севере — рот, который ест.<br><br>— Да.<br><br>— <em>Тогда — иди быстро.</em> Пока оно не доело всё.`,
+  ch:[{t:'Идти к Молю',nx:'i_mole'}],
+  fn:()=>G.d.hasTeacherBook=true
+},
+
+{ id:'i_guard_ask', act:'АКТ I', an:1, bg:'village',
+  title:'Что в книжке',
+  text:`— Можно посмотреть?<br><br>Страж протянул книжку без колебаний. Каэль пролистал несколько страниц.<br><br>Там были записи — не заклинания. Просто наблюдения. <em>«Дети учатся говорить медленно — потому что слова важны, и они это чувствуют».</em> <em>«Молчание после правильного слова важнее самого слова».</em><br><br>На последней странице — одна фраза, обведённая рамкой: <em>«Безмолвие между словами — тоже язык».</em><br><br>Каэль остановился на ней.<br><br>— Что это значит? — спросил он.<br><br>— Не знаю. Написал двадцать лет назад и до сих пор думаю. — Страж забрал книжку. — Может, когда дойдёшь до севера — поймёшь.`,
+  ch:[{t:'Рассказать Стражу куда и зачем идёшь',nx:'i_guard_tell'},{t:'Идти к Молю',nx:'i_mole'}]
+},
+
+{ id:'i_tavern', act:'АКТ I', an:1, bg:'village',
+  title:'Таверна',
+  text:`Таверна оказалась единственным местом в деревне, где горел огонь. Небольшой, почти догорающий — но был.<br><br>Хозяин — худой мужчина с усами — поставил перед Каэлем миску похлёбки без слов. Потом жестом спросил: есть ли чем заплатить.<br><br>Каэль достал монету. Хозяин её взял, вернул половину, показал на рукопись и покачал головой — <em>не нужно, не проси</em>.<br><br>Другой посетитель — пожилая женщина в дальнем углу — смотрела на Каэля не отрываясь. Когда он встретил её взгляд, написала пальцем по столу — воздушными буквами: <em>«Где ты был раньше?»</em>`,
+  ch:[{t:'Поговорить с женщиной',nx:'i_tavern_woman'},{t:'Поесть и идти к Молю',nx:'i_mole'}]
+},
+
+{ id:'i_tavern_woman', act:'АКТ I', an:1, bg:'village',
+  title:'Женщина в таверне',
+  text:`— Где ты был раньше? — спросила она вслух. Голос у неё был низкий и хрипловатый от долгого молчания.<br><br>— Шёл с юга. Долго.<br><br>— Я про всех Писарей. Где вы были, пока слова уходили?<br><br>Каэль не нашёлся что ответить.<br><br>— Мой муж умер три года назад. Я хотела сказать ему что-то важное — а слов не было. Обычных слов было полно. <em>Но важных — именно тех — не осталось.</em> — Она смотрела в стол. — Он умер, не услышав.<br><br>— Мне жаль.<br><br>— Не надо. Просто иди туда куда идёшь. И сделай так чтобы другие не теряли слова раньше времени.`,
+  ch:[
+    {t:'«Как звали вашего мужа?»',nx:'i_tavern_husband'},
+    {t:'Пообещать сделать всё возможное',nx:'i_mole'}
+  ]
+},
+
+{ id:'i_tavern_husband', act:'АКТ I', an:1, bg:'village',
+  title:'Имя мужа',
+  text:`— Как его звали?<br><br>Она остановилась. Долго смотрела на Каэля.<br><br>— Лер. — Впервые за разговор — улыбнулась, совсем слабо. — Хорошее имя. Короткое. Он говорил: чем короче имя — тем труднее его потерять.<br><br>— Он был прав.<br><br>— Я знаю. — Она встала, засобиралась. — У тебя есть слово «любовь»?<br><br>— Нет. Такого нет в рукописи.<br><br>Она кивнула.<br><br>— Значит, это не живое слово. Значит, оно существует само по себе. — <em>Пауза.</em> — Значит, его никто не может съесть.`,
+  ch:[{t:'Подумать об этом и идти к Молю',nx:'i_mole'}],
+  fn:()=>G.d.metLer=true
+},
+
+{ id:'i_arrival_2', act:'АКТ I', an:1, bg:'village',
+  title:'Площадь',
+  text:`Каэль обошёл деревню по кругу. Везде одно и то же: люди живут — но как будто вполсилы. Огороды без урожая. Дома без огня. Дети без имён.<br><br>На площади торговец Моль всё ещё стоял у весов. Увидев Каэля, кивнул — <em>приходи, когда будешь готов</em>.<br><br>Где-то за спиной Каэля дети у колодца наконец начали что-то делать — кидать камешки в воду. Это было почти как игра.`,
+  ch:[{t:'Идти к Молю',nx:'i_mole'}]
+},
+
+{ id:'i_mole', act:'АКТ I', an:1, bg:'village',
+  title:'Моль',
+  text:`— О. Писарь. — Моль сказал это без удивления, как говорят «дождь» когда видят дождь. — Давно не видел настоящих.<br><br>Он был тучным, лысым, с маленькими умными глазами. Пальцы чистые — хотя всё остальное говорило о том, что он не чурается грязной работы.<br><br>Он взял рукопись Каэля — «посмотреть» — и вернул. Но <em>держал секунды на три дольше, чем нужно</em>. И потом протёр пальцы о рукав — как будто они были тёплыми после этого.<br><br>— У меня есть кое-что для тебя, — сказал он. — Информация о пожаре. О том, кто устроил. О том, что ждёт тебя на севере. — Он улыбнулся. — Четыре слова. Недорого для такого товара.`,
+  ch:[
+    {t:'Заплатить четыре слова',cost:4,nx:'i_mole_pay'},
+    {t:'«Зачем тебе живые слова?»',nx:'i_mole_why'},
+    {t:'«Откуда ты знаешь кто я?»',nx:'i_mole_how'},
+    {t:'Отказать и уходить',nx:'i_mole_refuse'}
+  ]
+},
+
+{ id:'i_mole_how', act:'АКТ I', an:1, bg:'village',
+  title:'Откуда он знает',
+  text:`— Откуда ты знаешь кто я?<br><br>— Рукопись. — Моль пожал плечами. — Такие бывают только у Писарей. А Писарей — только один остался. Простая арифметика.<br><br>— И ты ждал именно меня?<br><br>— Ждал кого-нибудь с такой рукописью. Рано или поздно — должен был пройти. — Пауза. — Я сорок лет живу на этой дороге. На единственной дороге к Истоку. <em>Все проходят через меня.</em><br><br>Каэль смотрел на него. Что-то в этом было неправильным, но он не мог сразу понять что.<br><br>— Ты не просто торговец, — сказал он.<br><br>— Нет, — согласился Моль. — Не просто.`,
+  ch:[
+    {t:'«Кто ты тогда?»',nx:'i_mole_who'},
+    {t:'Заплатить за информацию',cost:4,nx:'i_mole_pay'},
+    {t:'Уйти',nx:'i_mole_refuse'}
+  ]
+},
+
+{ id:'i_mole_who', act:'АКТ I', an:1, bg:'village',
+  title:'Кто такой Моль',
+  text:`— Кто ты?<br><br>Моль помолчал. Потом — впервые без улыбки:<br><br>— Бывший послушник Ордена Писарей. Ушёл за три недели до пожара. — Пауза. — Знал, что будет. Не предупредил. — Ещё пауза. — Живу с этим.<br><br>— Почему не предупредил?<br><br>— Потому что боялся Веи. — Он произнёс это имя спокойно, но Каэль заметил, как пальцы сжались. — Она не угрожала. Просто смотрела определённым образом. Этого хватало.<br><br>Каэль молчал.<br><br>— Я продаю слова здесь, — продолжил Моль, — потому что мне нужно чем-то занять то место внутри. Где раньше было... что-то другое. — <em>Он снова улыбнулся, но улыбка вышла кривой.</em> — Четыре слова. Я дам тебе то, что поможет на севере.`,
+  ch:[
+    {t:'Заплатить',cost:4,nx:'i_mole_pay'},
+    {t:'Дать ему два слова за честность',cost:2,nx:'i_mole_honesty'},
+    {t:'Уйти',nx:'i_mole_refuse'}
+  ]
+},
+
+{ id:'i_mole_honesty', act:'АКТ I', an:1, bg:'village',
+  title:'Честная цена',
+  text:`— Два, — сказал Каэль. — За честность.<br><br>Моль посмотрел на него долго. Потом кивнул — один раз, коротко.<br><br>Два слова ушли. Страницы потемнели.<br><br>— Орден Молчания сжёг монастырь, — сказал Моль. — Лидер — Вея, бывшая жительница Алоса. Её мотив: защита людей от Писарей, которые, по её мнению, опаснее Безмолвия. — Пауза. — Она права в одном: <em>ваш Старший знал о риске, когда произнёс слово над Алосом. И произнёс всё равно.</em><br><br>— Это правда?<br><br>— Я видел бумаги. Да.`,
+  ch:[{t:'Спросить про Исток',nx:'i_mole_north'},{t:'Уйти на север',nx:'i_departure'}],
+  fn:()=>G.d.paidMole=true
+},
+
+{ id:'i_mole_why', act:'АКТ I', an:1, bg:'village',
+  title:'Зачем Молю слова',
+  text:`— Зачем тебе живые слова?<br><br>Моль посмотрел на весы.<br><br>— Торговля. Люди платят за маленькие чудеса — хлеб вырастить, боль унять на ночь. Пока слово не иссякло — оно работает.<br><br>— А потом оно исчезает навсегда.<br><br>— Всё исчезает навсегда. — Пауза. — Я просто беру своё пока можно.<br><br>Каэль смотрел на него. В этом была своя логика. Жестокая, но логика.<br><br>— И ты не думаешь о том, что каждое потраченное слово кормит Безмолвие?<br><br>Моль поднял на него взгляд — и на секунду в нём мелькнуло что-то, что не вписывалось в образ равнодушного торговца. <em>Что-то похожее на вину.</em><br><br>— Думаю. Каждый день.`,
+  ch:[
+    {t:'«Тогда почему продолжаешь?»',nx:'i_mole_continue'},
+    {t:'Заплатить за информацию',cost:4,nx:'i_mole_pay'}
+  ]
+},
+
+{ id:'i_mole_continue', act:'АКТ I', an:1, bg:'village',
+  title:'Почему продолжает',
+  text:`— Тогда почему продолжаешь?<br><br>Долгое молчание.<br><br>— Потому что если не я — они купят у другого. А другой не будет даже думать. — Пауза. — Или потому что привык. — Ещё пауза. — Или потому что здесь есть дети которые едят только когда я торгую хорошо.<br><br>Он разгладил скатерть на прилавке.<br><br>— Человек находит много причин делать то, что уже решил делать. <em>Я не исключение.</em><br><br>— Честно.<br><br>— Я стараюсь быть честным хотя бы с собой. — Улыбка. — С другими сложнее. Четыре слова?`,
+  ch:[
+    {t:'Заплатить',cost:4,nx:'i_mole_pay'},
+    {t:'Уйти без информации',nx:'i_mole_refuse'}
+  ]
+},
+
+{ id:'i_mole_refuse', act:'АКТ I', an:1, bg:'village',
+  title:'Отказ',
+  text:`— Нет, — сказал Каэль. — Четыре слова — слишком дорого за информацию, которую я могу узнать сам.<br><br>Моль пожал плечами без обиды.<br><br>— Твоё право. — Он начал складывать что-то на прилавке. — Только знай: на севере тебя ждёт кое-что, чего ты не ожидаешь. <em>И когда встретишь — вспомнишь, что мог узнать заранее.</em><br><br>Каэль уходил, чувствуя взгляд Моля на спине.`,
+  ch:[{t:'Уйти на север',nx:'i_departure'}]
+},
+
+{ id:'i_mole_pay', act:'АКТ I', an:1, bg:'village',
+  title:'Правда Моля',
+  text:`Четыре слова ушли. Четыре страницы почернели. Каэль почувствовал это — как если бы четыре маленьких огня погасли у него в ладони.<br><br>— Орден Молчания, — сказал Моль тихо. — Лидер — Вея. Она выжила в Алосе. Единственная из трёх тысяч. — Пауза. — Твой Старший Писарь <em>знал</em> о риске. Видел расчёты. Произнёс слово всё равно.<br><br>Каэль не пошевелился.<br><br>— Это не всё, — продолжил Моль. — Безмолвие не просто «живёт» на севере. Оно там потому, что там — <em>Исток</em>. Место, где было произнесено первое слово. <em>И первое молчание после него.</em> Безмолвие — это тень первого слова. Оно было всегда.`,
+  ch:[{t:'Спросить о том, что ждёт на севере',nx:'i_mole_north'},{t:'Уйти',nx:'i_departure'}],
+  fn:()=>G.d.paidMole=true
+},
+
+{ id:'i_mole_north', act:'АКТ I', an:1, bg:'village',
+  title:'Что ждёт на севере',
+  text:`— Что меня ждёт?<br><br>— Вея — умная и честная. Она не убьёт тебя. Она будет говорить с тобой. — Моль смотрел куда-то поверх головы Каэля. — <em>И это опаснее.</em><br><br>— Почему?<br><br>— Потому что она права в половине того, что говорит. А когда человек прав в половине — это сложнее, чем когда он неправ полностью.<br><br>— А Безмолвие?<br><br>Моль помолчал долго.<br><br>— Безмолвие — не монстр. Это процесс. Как огонь. Огонь не злой — он просто горит. <em>Ты не можешь победить огонь злостью. Только водой или другим огнём.</em><br><br>— Что тогда победит Безмолвие?<br><br>— Не знаю. — Впервые честно. — Но если узнаешь — напиши мне. Если умею читать, а не только торговать.`,
+  ch:[{t:'Уйти на север',nx:'i_departure'}]
+},
+
+{ id:'i_departure', act:'АКТ I', an:1, bg:'village',
+  title:'Уход',
+  text:`Каэль уходил из деревни вечером.<br><br>Тим стоял у ворот и смотрел на него. Когда Каэль поравнялся с ним, мальчик прошептал что-то. Каэль не расслышал.<br><br>— Что? — переспросил он.<br><br>— <em>Тим</em>, — повторил мальчик. Громче. — Меня зовут Тим.<br><br>Он произнёс это так, как произносят клятву. Или молитву.<br><br>Каэль кивнул и пошёл дальше. Сзади — если обернуться — была бы деревня без имени, дети у колодца, старуха с сетью и толстый торговец. Он не обернулся.<br><br><em>Если обернуться — труднее идти вперёд.</em>`,
+  ch:[{t:'Продолжить путь',nx:'map_1',sc:'map'}]
+},
+
+{ id:'map_1', sc:'map', mapStop:'village', mapNext:'jrn_1', fn:()=>{ G.d.wordsAfterAct1=G.words; } },
+{ id:'jrn_1', sc:'journal', jrnNext:'ii_road' },
+
+// ╔══════════════════════════════════════════════════╗
+// ║  АКТ II — ГОРОД МОЛЧАЛЬНИКОВ                   ║
+// ╚══════════════════════════════════════════════════╝
+
+{ id:'ii_road', act:'АКТ II', an:2, bg:'city',
+  title:'Дорога в город',
+  text:`До города — три дня пути. Ночью Каэль спал в поле, завернувшись в плащ, положив рукопись под голову.<br><br>На второй день он встретил путника — молодого, хорошо одетого, идущего в обратную сторону. Тот посмотрел на рукопись, остановился.<br><br>— Не ходи туда, — сказал он.<br><br>— В город?<br><br>— Да. — Он говорил тихо, оглядываясь. — Я оттуда. Они... они счастливы. Это самое странное. <em>Они действительно счастливы. И ты начинаешь думать — а может, они правы?</em><br><br>— И что плохого в счастье?<br><br>— Не знаю. — Он пошёл дальше. — Но что-то плохое есть. Я три года прожил там и только сейчас почувствовал что именно. <em>В счастье без слов — нет разницы между тобой и камнем.</em>`,
+  ch:[{t:'Подумать об этом и идти дальше',nx:'ii_arrival'},{t:'Остановить путника — расспросить подробнее',nx:'ii_traveler'}]
+},
+
+{ id:'ii_traveler', act:'АКТ II', an:2, bg:'city',
+  title:'Беглец',
+  text:`— Подождите. — Каэль догнал его. — Вы сказали — три года. Что случилось что вы ушли именно сейчас?<br><br>Путник остановился.<br><br>— Ребёнок. Мой сын родился там. — Пауза. — Он не плакал. Совсем. Новорождённый ребёнок — и не плакал. Молчал. Смотрел. <em>Спокойно.</em><br><br>— Это плохо?<br><br>— Дети должны плакать. Это их первые слова. Первый крик — это «я здесь, я существую, мне что-то нужно». — Он смотрел в землю. — Мой сын не сказал этого. Он сразу согласился с тишиной. — Пауза. — Я забрал его и ушёл. Жена осталась.<br><br>Он пошёл дальше. Каэль смотрел ему вслед.`,
+  ch:[{t:'Продолжить путь в город',nx:'ii_arrival'}],
+  fn:()=>G.d.heardAboutSilentChild=true
+},
+
+{ id:'ii_arrival', act:'АКТ II', an:2, bg:'city',
+  title:'Город',
+  text:`Ворота — два столба из чёрного камня. Между ними — стражник с табличкой: знак перечёркнутого рта.<br><br>Без слов. Без объяснений. Каэль кивнул и вошёл.<br><br>Город был красивым. Чистым. Мощёные улицы, ухоженные дома, фонтан на площади. Люди двигались с достоинством — спокойно, точно, без суеты.<br><br><em>И без звука.</em><br><br>Только шаги, скрип колёс, звон монет. Никаких голосов. Никакого смеха. Никакого плача.<br><br>Каэль поймал себя на том, что невольно тоже замолчал. <em>Тишина была заразной.</em>`,
+  ch:[
+    {t:'Осмотреться на рынке',nx:'ii_market'},
+    {t:'Найти таверну',nx:'ii_inn'},
+    {t:'Сразу искать лидера',nx:'ii_veia_locate'},
+    {t:'Поговорить со случайным горожанином',nx:'ii_citizen'}
+  ]
+},
+
+{ id:'ii_citizen', act:'АКТ II', an:2, bg:'city',
+  title:'Горожанин',
+  text:`Мужчина у фонтана смотрел на Каэля с вежливым любопытством. Протянул дощечку и мел.<br><br>Каэль написал: <em>«Как вам живётся здесь?»</em><br><br>Мужчина взял дощечку, написал: <em>«Хорошо. Спокойно. Раньше я ссорился с женой каждый день — из-за слов. Она говорила одно, я слышал другое. Теперь мы понимаем друг друга жестами. Точнее»</em>.<br><br>Каэль написал: <em>«Вы не скучаете по разговорам?»</em><br><br>Долгая пауза. Мужчина написал медленно: <em>«Иногда хочется сказать что-то, что нельзя изобразить жестом. Большое. Сложное. Но потом думаю — может, это и не нужно было говорить. Может, это было лишнее»</em>.`,
+  ch:[{t:'Спросить о Вее',nx:'ii_citizen_veia'},{t:'Идти на рынок',nx:'ii_market'}]
+},
+
+{ id:'ii_citizen_veia', act:'АКТ II', an:2, bg:'city',
+  title:'О Вее',
+  text:`Каэль написал: <em>«Где найти вашего лидера? Вея?»</em><br><br>Мужчина изменился — совсем чуть-чуть. Что-то в плечах.<br><br>Написал: <em>«Она не лидер. Она основательница. Есть разница»</em>.<br><br>— В чём?<br><br>Написал: <em>«Лидер приказывает. Она просто жила так как считала правильным. И другие увидели — и начали тоже. Никто не заставлял»</em>.<br><br>Потом написал адрес — небольшой дом у северной стены. И добавил: <em>«Она говорит. Вслух. Не знаю почему. Может нарочно. Может не может иначе»</em>.`,
+  ch:[{t:'Идти к Вее',nx:'ii_veia'},{t:'Сначала на рынок',nx:'ii_market'}]
+},
+
+{ id:'ii_market', act:'АКТ II', an:2, bg:'city',
+  title:'Рынок без слов',
+  text:`Рынок работал на удивление хорошо. Всё — карточками, жестами, образцами. Хлеб, ткань, инструменты — всё аккуратно разложено и подписано ценами.<br><br>В одном углу — лавка с написанными словами. Не живыми — просто на бумаге. Коллекционеры покупали их как воспоминания.<br><br>Каэль остановился у прилавка. Среди листков — один в знакомом переплёте. Орденский. <em>Чья-то рукопись — или её копия.</em><br><br>Торговец написал цену. Каэль покачал головой — денег нет. Торговец написал другую цену — <em>одно живое слово</em>.<br><br>Каэль подумал. Если там что-то важное о севере — стоит заплатить.`,
+  ch:[
+    {t:'Заплатить одно живое слово за рукопись',cost:1,nx:'ii_market_page'},
+    {t:'Осмотреться дальше',nx:'ii_market_2'},
+    {t:'Идти к Вее',nx:'ii_veia'}
+  ]
+},
+
+{ id:'ii_market_2', act:'АКТ II', an:2, bg:'city',
+  title:'Художник',
+  text:`В дальнем углу рынка сидел пожилой мужчина и рисовал. Не на продажу — просто рисовал. Каэль остановился посмотреть.<br><br>На бумаге — деревня. Та же, откуда пришёл Каэль, или очень похожая. Дети у колодца. Умирающий огонь. <em>Всё передано точно, без слов — только линиями.</em><br><br>Художник написал на полях: <em>«Я родился там. Пришёл сюда пять лет назад. Рисую чтобы не забыть»</em>.<br><br>— Вам нравится здесь? — написал Каэль.<br><br><em>«Да. И нет. Здесь спокойно — но я рисую всё громче. Как будто то, что нельзя сказать, ищет выход через руки»</em>.`,
+  ch:[{t:'Спросить о рукописи на рынке',nx:'ii_market'},{t:'Идти к Вее',nx:'ii_veia'}]
+},
+
+{ id:'ii_market_page', act:'АКТ II', an:2, bg:'city',
+  title:'Страница из Ордена',
+  text:`Одно слово ушло. Страница потемнела.<br><br>Бумага была орденской — Каэль узнал бумагу сразу. Дата: за три дня до пожара.<br><br><em>«Отчёт Старшего: попытка уничтожить Безмолвие провалилась. Существо поглощает все слова силы немедленно. Разработан план последней попытки: слово максимальной концентрации непосредственно в Истоке. Риск: возможен резонанс с живой материей в радиусе нескольких лиг. Комитет осведомлён. Одобрено к исполнению».</em><br><br>Каэль перечитал дважды.<br><br><em>Они знали. Они знали что могут убить людей. И всё равно решили попробовать.</em><br><br>Рукопись у него за пазухой стала казаться тяжелее.`,
+  ch:[{t:'Идти к Вее — теперь с этими знаниями',nx:'ii_veia'}],
+  fn:()=>G.d.foundArchive=true
+},
+
+{ id:'ii_inn', act:'АКТ II', an:2, bg:'city',
+  title:'Постоялый двор',
+  text:`Постоялый двор был чистым и тихим. Хозяйка — пожилая женщина — поселила Каэля без слов, только жестами. Комната маленькая, кровать мягкая.<br><br>Ночью он слышал сквозь стену — плач. Тихий, быстро остановленный. Как будто кто-то заплакал и тут же вспомнил, что нельзя.<br><br>Утром за завтраком он написал хозяйке: <em>«Ночью кто-то плакал»</em>.<br><br>Она долго смотрела на его записку. Потом написала: <em>«Это я. Иногда забываю. Потом вспоминаю — и становится стыдно. Здесь не плачут. Здесь не нужно»</em>.<br><br>— Почему стыдно? — написал Каэль.<br><br>Она убрала его записку, не отвечая.`,
+  ch:[{t:'Идти на рынок',nx:'ii_market'},{t:'Идти к Вее',nx:'ii_veia'}]
+},
+
+{ id:'ii_veia_locate', act:'АКТ II', an:2, bg:'city',
+  title:'Поиски',
+  text:`Никаких указателей. Никакого «дворца лидера» или центрального здания власти. Каэль спрашивал жестами — горожане показывали руками. Пять разных направлений от пяти разных людей.<br><br>В конце концов он нашёл мальчика лет восьми, который умел читать написанное быстрее взрослых. Написал: <em>«Где живёт Вея?»</em><br><br>Мальчик написал адрес — маленький дом у северной стены — и добавил: <em>«Она иногда говорит вслух. Мама говорит это можно ей, потому что она была снаружи»</em>.<br><br>— Снаружи?<br><br><em>«Там где не было тишины. Мама говорит оттуда можно принести слова. Потом они уходят»</em>.`,
+  ch:[{t:'Идти к Вее',nx:'ii_veia'}]
+},
+
+{ id:'ii_veia', act:'АКТ II', an:2, bg:'veia',
+  title:'Вея',
+  text:`Маленький дом. Деревянная дверь, никакого знака снаружи.<br><br>Каэль постучал. Долгое молчание. Потом:<br><br>— Войди.<br><br>Голос — спокойный, не слишком громкий. Обычный. <em>Как странно слышать голос после часа тишины.</em><br><br>Она сидела у окна с детской книгой на коленях. Лет тридцать пять, не больше. Когда подняла взгляд — не удивилась.<br><br>— Писарь, — сказала она. — Я думала, ты придёшь раньше. Я следила за дорогой. — Пауза. — Садись. Я расскажу тебе всё сама. Без вопросов — всё равно спросишь то же, что и они спрашивали раньше.`,
+  ch:[
+    {t:'Сесть и слушать',nx:'ii_veia_story'},
+    {t:'«Что за книга?»',nx:'ii_veia_book'},
+    {t:'«Кто приходил до меня?»',nx:'ii_veia_before'}
+  ]
+},
+
+{ id:'ii_veia_before', act:'АКТ II', an:2, bg:'veia',
+  title:'Кто был до Каэля',
+  text:`— Кто приходил до меня?<br><br>Вея смотрела на книгу.<br><br>— Охотники за наградой — первые годы. Потом перестали. — Пауза. — Потом — двое из Ордена, выжившие. Я разговаривала с ними. Они ушли. Один простил меня. Другой — нет. — Ещё пауза. — Потом исследователи. Философы. Один — очень умный — доказал мне за три часа, что я была права. Это меня напугало.<br><br>— Почему?<br><br>— Потому что если можно <em>доказать</em> что убийство правильно — значит, что-то не так с системой доказательств. — Она посмотрела на него. — Ты первый Писарь с живой рукописью. Остальные были без.`,
+  ch:[{t:'Слушать её историю',nx:'ii_veia_story'},{t:'«Откуда у тебя эта книга?»',nx:'ii_veia_book'}]
+},
+
+{ id:'ii_veia_book', act:'АКТ II', an:2, bg:'veia',
+  title:'Детская книга',
+  text:`— Что за книга?<br><br>Вея посмотрела на неё, как на что-то, о чём давно не думала.<br><br>— Отец дал. В день, когда мы переехали в Алос. — Пауза. — Сказки. Очень простые. Там есть один герой — он идёт в далёкую страну и несёт с собой семена. Сеет их по дороге. К концу пути семян не остаётся совсем. Но везде, где он шёл — растут цветы.<br><br>Каэль молчал.<br><br>— Я прочитала эту книгу в день пожара, — сказала Вея ровным голосом. — Под развалинами. Пока искала выход. Она была в моей сумке. — Она положила книгу на стол. — <em>Не знаю почему я тебе это рассказываю.</em>`,
+  ch:[{t:'«Расскажи про Алос»',nx:'ii_veia_story'},{t:'«Орден знал о риске»',nx:'ii_veia_archive'}]
+},
+
+{ id:'ii_veia_archive', act:'АКТ II', an:2, bg:'veia',
+  title:'Архивная страница',
+  text:`Каэль достал страницу из Орденского архива.<br><br>Вея взяла её. Прочла медленно. Отложила на стол. Долго смотрела в окно.<br><br>— Я это подозревала. — Голос ровный. — Слишком точно. Слишком целенаправленно. Случайные ошибки так не выглядят.<br><br>— Это меняет что-нибудь?<br><br>Долгая пауза.<br><br>— Нет. — Она обернулась. — Понимаешь? Я думала, что если узнаю это — что-то изменится. Станет легче или хуже. Но нет. — Она смотрела прямо. — <em>Три тысячи человек всё равно мертвы. Ни «знал», ни «не знал» их не оживит.</em><br><br>— Но это меняет вину.<br><br>— Вина — это для тех, кто жив.`,
+  ch:[{t:'Слушать историю Алоса',nx:'ii_veia_story'},{t:'«Как ты выжила?»',nx:'ii_veia_survived'}],
+  fn:()=>G.d.shownArchive=true
+},
+
+{ id:'ii_veia_story', act:'АКТ II', an:2, bg:'veia',
+  title:'История Алоса',
+  text:`— Мне было восемь. Отец был пекарем. У нас была собака по имени Ком.<br><br>Она говорила ровно — как человек, который рассказывал эту историю много раз и научился держать её на расстоянии.<br><br>— Твой Старший Писарь пришёл в город за неделю до. Жил у нас на постое — в городе не было гостиниц для одиноких путников. Отец кормил его. Он был добрым. Давал мне конфеты. — Пауза. — Потом он ушёл на холм за городом. И произнёс слово.<br><br>— Ты видела?<br><br>— Видела вспышку. Слышала тишину — сначала маленькую, потом очень большую. Потом — стены.<br><br>— Как выжила?<br><br>— <em>Не знаю.</em>`,
+  ch:[{t:'«Как тебя нашли?»',nx:'ii_veia_survived'},{t:'«Почему именно молчание?»',nx:'ii_veia_why_silence'}],
+  fn:()=>G.d.listenedVeia=true
+},
+
+{ id:'ii_veia_survived', act:'АКТ II', an:2, bg:'veia',
+  title:'Выживание',
+  text:`— Как ты выжила?<br><br>— Меня нашли спасатели из ближайшего города через три дня. Я сидела в развалинах и читала книгу отца. Не потому что была спокойна — просто не могла придумать что ещё делать.<br><br>— Три дня одна.<br><br>— Три дня. — Пауза. — Я поняла тогда кое-что. В этой тишине — настоящей тишине, без слов — я думала ясно. Первый раз в жизни. Ни чужих слов, ни своих. Просто — думать. — Она смотрела в окно. — Я тогда решила, что слова — это шум. Красивый иногда. Необходимый. Но шум.<br><br>— Всего лишь шум?<br><br>— <em>Не всегда. Но чаще, чем нужно.</em>`,
+  ch:[{t:'«Почему ты сожгла Орден?»',nx:'ii_veia_fire'},{t:'«Ты думаешь, что слова вообще не нужны?»',nx:'ii_veia_debate'}]
+},
+
+{ id:'ii_veia_why_silence', act:'АКТ II', an:2, bg:'veia',
+  title:'Почему молчание',
+  text:`— Почему именно молчание? Почему не что-то другое?<br><br>Вея немного улыбнулась — первый раз за разговор.<br><br>— Потому что тишина — это единственное, что Безмолвие не может съесть. — Пауза. — Понимаешь? Оно ест слова. Всё, что произнесено с намерением — уходит к нему. <em>Но тишина с намерением — это не еда. Это зеркало.</em><br><br>— Откуда ты это знаешь?<br><br>— Я пробовала. После Алоса — я несколько месяцев не говорила вообще. Ни слова. И я чувствовала — оно не растёт. Ждёт. Но не растёт.<br><br>— Это исследование? — спросил Каэль.<br><br>— Нет. Это горе. Но оказалось полезным.`,
+  ch:[{t:'«Как мне тогда остановить его?»',nx:'ii_veia_howstop'},{t:'«Почему сожгла монастырь?»',nx:'ii_veia_fire'}]
+},
+
+{ id:'ii_veia_fire', act:'АКТ II', an:2, bg:'veia',
+  title:'Пожар',
+  text:`— Почему сожгла монастырь?<br><br>— Потому что они собирались повторить попытку. — Ровно. — У них был новый план. Новое слово. Новый город под прицелом — и они не собирались никого предупреждать. Снова.<br><br>— Откуда ты знала?<br><br>— У меня были люди внутри. Орден не был монолитным. Половина — против. Но половина — тоже против. А меньшинство решало. — Пауза. — Я не хотела жертв. Я послала предупреждение за день. Большинство успело уйти.<br><br>— Не все.<br><br>— Нет. — Впервые что-то дрогнуло. — Не все. — Молчание. — <em>Я думаю об этом каждый день. Но альтернатива — ещё один Алос. Я выбирала между плохим и катастрофой.</em>`,
+  ch:[{t:'«Как остановить Безмолвие без слов?»',nx:'ii_veia_howstop'},{t:'«Ты права в половине»',nx:'ii_veia_debate'}]
+},
+
+{ id:'ii_veia_howstop', act:'АКТ II', an:2, bg:'veia',
+  title:'Как остановить',
+  text:`— Как остановить Безмолвие без слов?<br><br>Вея встала и подошла к окну.<br><br>— Я двадцать лет думаю над этим. У меня нет ответа. — Пауза. — Есть гипотеза. В записях Ордена — тех, что я сохранила — есть упоминание: «насыщение». Если дать ему что-то, от чего оно не может расти — оно вернётся к своему естественному размеру.<br><br>— Что значит «естественный размер»?<br><br>— <em>Пространство между словами.</em> Тишина, которая существовала до первого слова. Маленькая. Правильная. — Она обернулась. — Безмолвие не должно быть таким большим. Оно выросло, потому что слов стало слишком много, слишком быстро. Оно не успевало.<br><br>— Насыщение чем?<br><br>— Не знаю. <em>Но если ты найдёшь — скажи мне.</em>`,
+  ch:[{t:'«Ты придёшь помочь, если найду?»',nx:'ii_veia_promise'},{t:'Обдумать это и уйти',nx:'ii_depart'}]
+},
+
+{ id:'ii_veia_debate', act:'АКТ II', an:2, bg:'veia',
+  title:'Разговор двух правд',
+  text:`— Ты права в половине, — сказал Каэль. — Слова опасны. Безмолвие реально. Орден ошибался.<br><br>— И в чём я неправа?<br><br>— В том, что без слов — хуже. Тихо — не значит хорошо. — Он думал, как сформулировать. — Там, откуда я пришёл: дети не помнят своих имён. Не потому что слова опасны — просто оттого что слов нет совсем.<br><br>Вея молчала.<br><br>— Слово — это не только заклинание, — продолжил Каэль. — Слово — это «я есть». «Ты есть». «Мы есть». Без этого — нет разницы между человеком и камнем. Ты это сама понимаешь.<br><br>Долгое молчание.<br><br>— <em>Да</em>, — сказала она наконец, тихо. — Понимаю. — Пауза. — Я не говорю, что все слова лишние. Я говорю — их слишком много. И нам нужно научиться выбирать.`,
+  ch:[{t:'«Помоги мне»',nx:'ii_veia_promise'},{t:'Уйти — думать об этом в дороге',nx:'ii_depart'}]
+},
+
+{ id:'ii_veia_promise', act:'АКТ II', an:2, bg:'veia',
+  title:'Обещание',
+  text:`— Ты придёшь помочь, если найду способ?<br><br>Долгая пауза.<br><br>— Да, — сказала Вея. — Если найдёшь — приду. Как угодно. — Она взяла детскую книгу, убрала её в ящик стола. — Только знай: я не буду помогать произносить заклинания. Я не дам тебе использовать слова как оружие. — Пауза. — Но если есть способ без слов — или способ, в котором я не буду убийцей — я приду.<br><br>Она протянула ему что-то — маленький камень с вырезанным символом.<br><br>— Это знак. Покажешь любому горожанину здесь — и они пошлют мне сообщение. Я приду куда скажешь. <em>Это обещание.</em>`,
+  ch:[{t:'Взять камень и уйти',nx:'ii_depart'}],
+  fn:()=>G.d.veiaPromised=true
+},
+
+{ id:'ii_depart', act:'АКТ II', an:2, bg:'city',
+  title:'Рассвет',
+  text:`Каэль уходил на рассвете через северные ворота.<br><br>Стражник молча открыл ворота. Кивнул — что-то вроде «удачи». Каэль кивнул в ответ.<br><br>Позади — тысяча человек в добровольной тишине. Их молчание было настоящим — <em>не пустым, а наполненным</em>. Это был выбор. Странный выбор, но выбор.<br><br>Каэль шёл и думал о мальчике, который убежал из города с молчащим сыном. О художнике, который рисует громче. О хозяйке таверны, которой стыдно плакать.<br><br><em>Можно построить что угодно. Даже счастье. Но если строишь на молчании — однажды кто-то заплачет сквозь стену, и будет стыдиться этого.</em>`,
+  ch:[{t:'Взглянуть на путь',nx:'map_2',sc:'map'}]
+},
+
+{ id:'map_2', sc:'map', mapStop:'city', mapNext:'jrn_2', fn:()=>{ G.d.wordsAfterAct2=G.words; } },
+{ id:'jrn_2', sc:'journal', jrnNext:'iii_road' },
+
+// ╔══════════════════════════════════════════════════╗
+// ║  АКТ III — ИСТОК                                ║
+// ╚══════════════════════════════════════════════════╝
+
+{ id:'iii_road', act:'АКТ III', an:3, bg:'source',
+  title:'Последняя дорога',
+  text:`До Истока — пять дней пути. Дорога становилась хуже с каждым шагом: сначала плохой, потом заросшей, потом едва заметной.<br><br>На третий день Каэль нашёл у дороги мёртвое дерево с вырезанными на нём словами — десятки слов, одно за другим. <em>Как будто кто-то шёл здесь и оставлял слова.</em> Теряя их.<br><br>Некоторые были ещё тёплыми на ощупь — живые, но слабые. Слова из других рукописей. От других Писарей, которых он никогда не знал.<br><br>На четвёртый день: тишина изменилась. Стала более плотной. Более направленной. <em>Как будто кто-то очень внимательно слушал — и то, что он слушал, было именно Каэлем.</em>`,
+  ch:[{t:'Продолжить идти',nx:'iii_arrival'},{t:'Переночевать здесь и подготовиться',nx:'iii_road_night'}]
+},
+
+{ id:'iii_road_night', act:'АКТ III', an:3, bg:'source',
+  title:'Ночь перед',
+  text:`Каэль разжёг маленький огонь — последний раз перед руинами. Достал рукопись.<br><br>Пересчитал оставшиеся слова. Записал их на отдельный лист — не произносить, просто помнить что есть.<br><br>Потом достал книжку учителя — если брал её. Перечитал последнюю запись: <em>«Безмолвие между словами — тоже язык»</em>.<br><br>Он думал о Сиве. О том, как она сказала: <em>«Береги их. Ты им нужен больше, чем они тебе»</em>. О том, что слова в рукописи — не его. Он их несёт. Он хранитель, не владелец.<br><br>Огонь догорел. Каэль лёг и долго смотрел на звёзды — последние нормальные звёзды. Дальше небо будет другим.`,
+  ch:[{t:'Идти к Истоку на рассвете',nx:'iii_arrival'}],
+  fn:()=>G.d.preparedNight=true
+},
+
+{ id:'iii_arrival', act:'АКТ III', an:3, bg:'source',
+  title:'Исток',
+  text:`Руины появились на горизонте утром — чёрные камни среди серой земли.<br><br>Не было ни травы, ни деревьев, ни птиц в радиусе полулиги. <em>Только тишина и камни, почерневшие не от огня.</em><br><br>Тишина давила физически — на уши, на грудь, на горло. Каэль поймал себя на том, что рот закрыт крепче, чем обычно.<br><br>Он остановился у внешней стены. Провёл рукой по камню — холодный. Слишком холодный для летнего утра.<br><br>Рукопись задрожала. Не сильно — почти неощутимо. Как будто внутри что-то почувствовало близость <em>чего-то знакомого</em>.`,
+  ch:[
+    {t:'Войти в руины',nx:'iii_ruins_enter'},
+    {t:'Осмотреть внешние стены сначала',nx:'iii_outer_walls'},
+    {t:'Попробовать позвать — если кто-то есть',nx:'iii_call'}
+  ]
+},
+
+{ id:'iii_call', act:'АКТ III', an:3, bg:'source',
+  title:'Голос в руинах',
+  text:`— Есть кто-нибудь? — произнёс Каэль.<br><br>Слово улетело — и что-то изменилось. Страница потемнела на краях, хотя он не произносил заклинание. <em>Само обычное слово потребовало платы здесь.</em><br><br>Ответа не было. Но тишина изменила характер — стала более внимательной. Как будто что-то в руинах услышало и теперь смотрело.<br><br>— Я Каэль, — сказал он тише. — Последний Писарь. Я пришёл не воевать.<br><br>Тишина.<br><br>Потом — очень тихо, почти неотличимо от ветра — что-то вроде отклика. Не слово. Просто <em>изменение давления в воздухе</em>. Как дыхание.`,
+  ch:[{t:'Войти в руины',nx:'iii_ruins_enter'},{t:'Ждать — может, ответит',nx:'iii_wait_outside'}]
+},
+
+{ id:'iii_wait_outside', act:'АКТ III', an:3, bg:'source',
+  title:'Ожидание',
+  text:`Каэль сел у стены и стал ждать.<br><br>Час. Два. Тишина не менялась — но что-то в ней было другое. Менее враждебное. Или ему казалось.<br><br>На третьем часу он начал думать о том, что слышал от Веи: <em>«Безмолвие между словами — тоже язык»</em>. Что если молчание здесь — это не отсутствие ответа, а сам ответ? Что если Безмолвие <em>не умеет говорить словами</em>, потому что слова — это его еда, а не его язык?<br><br>Тогда как с ним разговаривать?<br><br><em>Молчанием. Ответным молчанием с намерением.</em>`,
+  ch:[{t:'Войти в руины',nx:'iii_ruins_enter'}],
+  fn:()=>G.d.waitedOutside=true
+},
+
+{ id:'iii_outer_walls', act:'АКТ III', an:3, bg:'source',
+  title:'Внешние стены',
+  text:`На внешних стенах — следы старого огня. Не Орденского пожара — другого, более старого. <em>Монастырь горел не один раз.</em><br><br>Между камнями — вырезанные имена. Не Орденские послушники — другие. Более старые, полустёршиеся. Некоторые — на языке, которого Каэль не знал.<br><br>Это место было священным — или проклятым — задолго до Ордена.<br><br>У восточной стены: маленький сад. Давно заброшенный, но — что странно — <em>живой</em>. Несколько цветов, серых и мелких, но живых. Единственная живая вещь в радиусе полулиги.<br><br>Как они выживают здесь?`,
+  ch:[{t:'Войти в руины через восточный вход',nx:'iii_ruins_enter'},{t:'Осмотреть цветы',nx:'iii_flowers'}]
+},
+
+{ id:'iii_flowers', act:'АКТ III', an:3, bg:'source',
+  title:'Живые цветы',
+  text:`Каэль присел у цветов. Маленькие, серо-белые, незнакомого вида.<br><br>Он прикоснулся пальцем к лепестку. Тот был холодным — но живым. <em>Как будто цветы существовали без тепла, без звука, без слов.</em><br><br>Он поднёс рукопись ближе. Страницы — спокойны. Слова внутри не рвались наружу, не дрожали от близости к Безмолвию. Просто — тихо лежали.<br><br>Может быть, цветы нашли способ жить рядом с Безмолвием. Не воевать — просто существовать в его соседстве.<br><br><em>Может быть, это и есть подсказка.</em>`,
+  ch:[{t:'Войти в руины',nx:'iii_ruins_enter'}],
+  fn:()=>G.d.sawFlowers=true
+},
+
+{ id:'iii_ruins_enter', act:'АКТ III', an:3, bg:'source',
+  title:'Внутри',
+  text:`Руины монастыря изнутри — больше, чем казалось снаружи. Несколько зданий, арки, двор. Всё почернело и осыпалось, но структура читается.<br><br>На стенах главного зала — письмена. Много, разных периодов. Каэль начал читать.<br><br>И в центре двора — <em>провал</em>. Примерно три метра в диаметре, идеально круглый. <em>Из него не было ни звука. Совсем.</em> Даже ветер, казалось, обходил его стороной.<br><br>Рукопись задрожала сильнее. Живые слова внутри — рвались к провалу. Или убегали от него. Трудно было понять.`,
+  ch:[
+    {t:'Изучить письмена на стенах',nx:'iii_walls'},
+    {t:'Осмотреть другие здания',nx:'iii_other_buildings'},
+    {t:'Подойти к провалу',nx:'iii_pit_edge'}
+  ]
+},
+
+{ id:'iii_other_buildings', act:'АКТ III', an:3, bg:'source',
+  title:'Другие здания',
+  text:`В библиотеке — только пепел. Все книги сгорели. Но на полу — несколько листков, упавших под стеллаж и уцелевших.<br><br>Каэль поднял их. Это был личный дневник — не Старшего, другого Писаря. Молодой голос.<br><br><em>«...сегодня спросил Старшего о том, что написано в формуле. Он сказал: не читай. Я прочитал. Там написано: ‹риск для живой материи в радиусе восьми лиг›. Алос находится в шести. Я спросил снова. Он сказал: это необходимо. Я не понимаю. Я боюсь».</em><br><br>Следующий листок — уже другой почерк, дрожащий:<br><br><em>«Если кто-то найдёт это — мы не все соглашались. Помните об этом».</em>`,
+  ch:[{t:'Изучить письмена',nx:'iii_walls'},{t:'Подойти к провалу',nx:'iii_pit_edge'}]
+},
+
+{ id:'iii_walls', act:'АКТ III', an:3, bg:'source',
+  title:'Письмена',
+  text:`Четыре слоя надписей — четыре периода.<br><br><em>Первый, древний</em>: «Здесь начало. Первое слово было произнесено здесь. Первая тишина после него — тоже здесь. Они неразделимы».<br><br><em>Второй</em>: «Тень первого слова живёт в тишине. Чем больше слов — тем больше тень. Это не зло — это равновесие».<br><br><em>Третий, Орденский</em>: «Равновесие нарушено. Тень выросла. Причина неизвестна. Ищем способ».<br><br><em>Четвёртый, последний, нацарапанный ногтем</em>: «Тишина побеждает тишиной. Но не любая тишина. <em>Тишина с содержанием</em>. Тишина, которая что-то значит — не пустота, а молчание человека, который мог говорить и выбрал не говорить. Это единственное, от чего тень не растёт и не уменьшается — она видит в нём своё отражение и останавливается».`,
+  ch:[{t:'Подойти к провалу',nx:'iii_pit_edge'},{t:'Спуститься вниз',nx:'iii_descent'}]
+},
+
+{ id:'iii_pit_edge', act:'АКТ III', an:3, bg:'source',
+  title:'Край провала',
+  text:`Каэль подошёл к краю и посмотрел вниз.<br><br>Темнота — абсолютная. Не просто отсутствие света, а что-то более плотное. <em>Как будто темнота там была материальной.</em><br><br>Рукопись тряслась в его руках. Живые слова внутри — он чувствовал их — были испуганы. Не метафорически. Настоящий страх — тёплые страницы стали холоднее.<br><br>Снизу — ничего. Ни звука, ни света, ни запаха.<br><br>Только ощущение, что там внизу — что-то смотрит вверх.`,
+  ch:[
+    {t:'Спуститься',nx:'iii_descent'},
+    {t:'Сначала изучить письмена',nx:'iii_walls'},
+    {t:'Произнести что-нибудь — посмотреть как реагирует',cost:1,nx:'iii_test_word'}
+  ]
+},
+
+{ id:'iii_test_word', act:'АКТ III', an:3, bg:'source',
+  title:'Проверка',
+  text:`Каэль произнёс одно слово — самое простое: «свет».<br><br>Страница потемнела. Слово ушло.<br><br>И — ничего не произошло. Никакого света. Слово поглотилось мгновенно, не успев ничего сделать. <em>Как капля воды в раскалённый песок.</em><br><br>Потом — через несколько секунд — рукопись чуть успокоилась. Как будто Безмолвие, насытившись одним словом, на мгновение стало менее голодным.<br><br>Менее голодным. Но оно было там. Ждало.`,
+  ch:[{t:'Спуститься',nx:'iii_descent'}]
+},
+
+{ id:'iii_descent', act:'АКТ III', an:3, bg:'source',
+  title:'Спуск',
+  text:`Каменные ступени уходили вниз. Кто-то вырубил их давно — аккуратно, ровно. <em>Кто-то хотел, чтобы к этому можно было спускаться.</em><br><br>Через двадцать ступеней — свет исчез. Через сорок — руки перестали чувствовать стены, хотя ступени продолжались.<br><br>На шестидесятой ступени Каэль остановился.<br><br>Внизу — огромная полость. Она была там, даже если не видно. Он <em>чувствовал</em> её — как чувствуешь открытое пространство в темноте.<br><br>И в ней — Безмолвие.<br><br>Оно не атаковало. Не двигалось. Просто было. <em>Огромное, старое, очень голодное.</em>`,
+  ch:[
+    {t:'Сразиться заклинаниями',nx:'combat_silence',sc:'combat'},
+    {t:'Стоять молча — ждать',nx:'iii_silence'},
+    {t:'Дать ему имя',cost:3,nx:'iii_name_it'},
+    {t:'Использовать тишину с намерением — молчать не от страха а от выбора',nx:'iii_intentional_silence'}
+  ]
+},
+
+{ id:'iii_intentional_silence', act:'АКТ III', an:3, bg:'source',
+  title:'Тишина с намерением',
+  text:`Каэль вспомнил письмена: <em>«Тишина, которая что-то значит»</em>.<br><br>Он закрыл глаза. Сделал три выдоха. И замолчал — не потому что нечего сказать. <em>Потому что выбрал.</em><br><br>У него было что сказать — очень много. О деревне, о Сиве, о Марте, о Тиме, о горожанине у фонтана, о художнике, о хозяйке таверны. О Вее и её детской книге. О Моле и том пустом месте внутри него.<br><br>Он мог говорить часами.<br><br>И выбрал — не говорить. Пока. Стоять здесь, в темноте, с полной рукописью, и <em>держать в себе</em> всё, что мог произнести.<br><br>Безмолвие почувствовало это. И остановилось.`,
+  ch:[{t:'Продолжать — держать намеренное молчание',nx:'iii_int_silence_2'}],
+  fn:()=>G.d.intentionalSilence=true
+},
+
+{ id:'iii_int_silence_2', act:'АКТ III', an:3, bg:'source',
+  title:'Час молчания',
+  text:`Час прошёл — или больше. Каэль не знал. Время в темноте текло иначе.<br><br>Безмолвие не атаковало. Оно — смотрело. Или что-то похожее на «смотрело».<br><br>Потом оно начало меняться. Медленно — как меняется форма облака. Стало чуть меньше. Потом ещё. Не потому что он его победил — потому что оно <em>узнало в нём что-то</em>. Тишину с содержанием. Своё отражение.<br><br>Каэль понял: оно не монстр. Оно — тень. Тень языка. Тень всех слов, которые были произнесены с начала времён. <em>Оно не может перестать существовать, пока существует язык.</em><br><br>Вопрос не «убить». Вопрос — «вернуть в размер».`,
+  ch:[
+    {t:'Дать ему имя — ограничить',cost:3,nx:'iii_name_it'},
+    {t:'Произнести имена людей — наполнить любовью',cost:4,nx:'iii_final_names'},
+    {t:'Продолжать молчать — пусть уменьшается само',nx:'iii_silence'}
+  ]
+},
+
+{ id:'combat_silence', sc:'combat', act:'АКТ III', bg:'combat',
+  enemy:{name:'Безмолвие',desc:'Поглощает слова. Растёт от каждого произнесённого.',hp:100},
+  combatNext:'iii_after'
+},
+
+{ id:'iii_after', act:'АКТ III', an:3, bg:'source',
+  title:'После боя',
+  text:`Безмолвие отступило. <em>Не умерло.</em><br><br>И стало больше — на каждое потраченное слово. Он видел это: что-то тёмное расширялось с каждым произнесённым заклинанием.<br><br>Каэль стоял, держа пустеющую рукопись. Понял: силой тут не выиграть. Это было в письменах — <em>«тень первого слова». Ты не можешь уничтожить тень, ударив по ней.</em><br><br>Он поднялся наверх медленно. Ноги слушались плохо. На рассвете сел у стены и смотрел на провал.<br><br>Что осталось у него? Несколько слов. Несколько вариантов. И выбор, который нужно сделать сейчас.`,
+  ch:[
+    {t:'Попробовать тишину с намерением',nx:'iii_intentional_silence'},
+    {t:'Дать Безмолвию имя',cost:3,nx:'iii_name_it'},
+    {t:'Просто принять что есть',nx:'iii_ascent',fn:()=>G.d.choseSilence=true}
+  ]
+},
+
+{ id:'iii_silence', act:'АКТ III', an:3, bg:'source',
+  title:'Молчание',
+  text:`Каэль стоял в темноте и молчал.<br><br>Час. Потом ещё. Потом ещё.<br><br>Безмолвие ждало. Оно умело ждать.<br><br>Но что-то менялось: без слов для поглощения оно <em>голодало</em>. Медленно, почти незаметно — сжималось. Возвращалось к своему настоящему размеру.<br><br>К рассвету Каэль поднялся наверх. Безмолвие было там — уменьшившееся, но не исчезнувшее. Оно никогда полностью не исчезнет. Это тень языка. Пока есть слова — есть тень.<br><br>Но сейчас тень была правильного размера. <em>Правильного — значит такого, при котором можно жить.</em>`,
+  ch:[
+    {t:'Произнести имена — подарить ему то, чего оно не может съесть',cost:4,nx:'iii_final_names'},
+    {t:'Подняться наверх — этого достаточно',nx:'iii_ascent',fn:()=>G.d.choseSilence=true}
+  ]
+},
+
+{ id:'iii_name_it', act:'АКТ III', an:3, bg:'source',
+  title:'Первое имя',
+  text:`— <em>Голод</em>, — произнёс Каэль.<br><br>Три страницы потемнели сразу. <em>Имена стоили дорого здесь.</em><br><br>Но Безмолвие — остановилось. Вздрогнуло. Что-то изменилось в нём — как меняется огонь, когда ему дают форму очага вместо открытого пространства.<br><br>— <em>Тень</em>, — произнёс Каэль тише.<br><br>Ещё три страницы. Ещё изменение.<br><br>Безмолвие смотрело на него — если у пустоты может быть взгляд. В этом взгляде было что-то, чего раньше не было. <em>Что-то похожее на растерянность.</em><br><br>Никто никогда не давал ему имени. Оно существовало тысячи лет — и было безымянным. <em>И, может быть, именно поэтому оно не знало своих границ.</em>`,
+  ch:[
+    {t:'Дать настоящее имя',cost:5,nx:'iii_true_name'},
+    {t:'Произнести имена людей',cost:4,nx:'iii_final_names'}
+  ],
+  fn:()=>G.d.namedIt=true
+},
+
+{ id:'iii_true_name', act:'АКТ III', an:3, bg:'source',
+  title:'Настоящее имя',
+  text:`Каэль закрыл глаза.<br><br>— <em>Пространство между словами</em>, — произнёс он медленно. Каждое слово отдельно. Как будто говорил само Безмолвию о нём самом.<br><br>Рукопись обожгла ладонь. Пять страниц почернело сразу. Что-то ушло из него — не только из книги, но из памяти: голос отца. Имя первого учителя. Первое слово, которое он когда-либо произнёс в жизни.<br><br>Но Безмолвие — <em>остановилось</em>. По-настоящему.<br><br>Потом начало уменьшаться. Как лёд на весеннем солнце — медленно, неохотно, но необратимо. Оно возвращалось к своему настоящему размеру. Не исчезало — <em>становилось собой</em>.`,
+  ch:[
+    {t:'Подняться наверх',nx:'iii_ascent',fn:()=>G.d.namedSilence=true},
+    {t:'Добавить последнее — слово «покой»',cost:2,nx:'iii_peace'}
+  ],
+  fn:()=>G.d.namedSilence=true
+},
+
+{ id:'iii_peace', act:'АКТ III', an:3, bg:'source',
+  title:'Покой',
+  text:`— <em>Покой</em>, — прошептал Каэль.<br><br>Безмолвие рассыпалось — <em>тихо</em>. Без взрыва. Как пепел, когда затихает огонь.<br><br>Пещера наполнилась обычной тишиной — той, в которой можно дышать и слышать своё сердце.<br><br>Каэль опустился на камни. В рукописи осталось несколько страниц — тёплых, живых. Он провёл по ним пальцем.<br><br><em>Несколько слов. На всё оставшееся.</em><br><br>Он поднялся. Пора наверх.`,
+  ch:[{t:'Подняться',nx:'iii_ascent'}],
+  fn:()=>{ G.d.endedWithPeace=true; }
+},
+
+{ id:'iii_final_names', act:'АКТ III', an:3, bg:'source',
+  title:'Имена',
+  text:`Каэль открыл рукопись последний раз.<br><br>— <em>Тим</em>, — произнёс он. Страница почернела. — Тим, который шепчет своё имя каждое утро.<br><br>— <em>Сива</em>. Которая объяснила ему про птиц.<br><br>— <em>Марта</em>. Которая хотела чтобы помнили.<br><br>— <em>Учитель</em>. Который записал: «безмолвие между словами — тоже язык».<br><br>— <em>Путник</em>. Который ушёл из молчащего города с сыном.<br><br>— <em>Вея</em>. Из Алоса. Которая была права в половине.<br><br>— <em>Моль</em>. Который не предупредил и жалеет.<br><br>Страницы чернели одна за другой. Безмолвие при каждом имени сжималось чуть больше. <em>Любовь, выраженная именем — ему не по зубам.</em>`,
+  ch:[{t:'Подняться наверх',nx:'iii_ascent'}],
+  fn:()=>G.d.choseNames=true
+},
+
+{ id:'iii_ascent', act:'АКТ III', an:3, bg:'source',
+  title:'Наверх',
+  text:`Каэль поднимался медленно. Ноги устали.<br><br>Наверху его встретил рассвет. Первый свет касался чёрных камней руин — и они казались чуть менее чёрными. Может, просто свет. Может, что-то изменилось.<br><br>Он сел у цветов — если видел их. Серо-белые, холодные, живые. Они пережили всё.<br><br>Рукопись лежала у него на коленях. Несколько страниц осталось — или много, или мало, в зависимости от пути.<br><br>Каэль думал о всех, кого встретил. О словах, которые потратил. О том, правильно ли потратил.<br><br><em>Наверное, правильно. Слова нужны для людей. Не для книги.</em>`,
+  ch:[{t:'Принять финал',nx:'__do_ending__'}]
+},
+];
+
+// ═══════════════════════════════════════════════════
+//  ENDING DATA  (6 endings)
+// ═══════════════════════════════════════════════════
+const ENDS = {
+  light:{
+    badge:'ФИНАЛ I · СВЕТ', bc:'#27500a', bb:'rgba(39,80,10,.15)',
+    title:'Финал: Свет',
+    text:`Каэль поднялся наверх на рассвете.<br><br>
+Он произнёс имена. Все имена — каждого человека, которому помог в пути. Сивы, которая объяснила ему про птиц. Старика, который предупредил про Моля. Веи из Алоса, которая была права по-своему. Всех.<br><br>
+Безмолвие не смогло поглотить любовь, выраженную именами. Любовь — не заклинание. В ней нет силы, которую можно украсть. Безмолвие рассыпалось, как пепел на ветру.<br><br>
+Рукопись опустела. Последняя страница почернела.<br><br>
+<em>Слова не вернулись. Но люди помнят, что они были. И пока помнят — они не совсем исчезли.</em>`,
+    emblem:`<circle cx="30" cy="30" r="28" stroke="rgba(39,80,10,.4)" stroke-width=".5" fill="none"/>
+<circle cx="30" cy="30" r="7" fill="rgba(201,168,76,.6)"/>
+<line x1="30" y1="4" x2="30" y2="16" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
+<line x1="30" y1="44" x2="30" y2="56" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
+<line x1="4" y1="30" x2="16" y2="30" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
+<line x1="44" y1="30" x2="56" y2="30" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
+<line x1="11" y1="11" x2="20" y2="20" stroke="rgba(201,168,76,.3)" stroke-width="1"/>
+<line x1="40" y1="40" x2="49" y2="49" stroke="rgba(201,168,76,.3)" stroke-width="1"/>
+<line x1="49" y1="11" x2="40" y2="20" stroke="rgba(201,168,76,.3)" stroke-width="1"/>
+<line x1="20" y1="40" x2="11" y2="49" stroke="rgba(201,168,76,.3)" stroke-width="1"/>`,
+    condition: d => d.choseNames && d.helpedVillage
+  },
+  ash:{
+    badge:'ФИНАЛ II · ПЕПЕЛ', bc:'#633806', bb:'rgba(99,56,6,.12)',
+    title:'Финал: Пепел',
+    text:`Каэль молчал два часа. Три.<br><br>
+Безмолвие уменьшалось. Медленно, неохотно — но уменьшалось. Оно питалось словами, а слов не было. В абсолютной тишине оно голодало.<br><br>
+К рассвету его почти не было.<br><br>
+Каэль поднялся наверх. Рукопись в его руках была полной — он не потратил ни слова. Это было странное ощущение: победа, которая ничего не стоила, и именно поэтому чувствовалась пустой.<br><br>
+<em>Мир не спасён. Слова не вернулись. Угроза устранена — до следующего раза. Тишина победила тишиной.</em>`,
+    emblem:`<circle cx="30" cy="30" r="28" stroke="rgba(99,56,6,.4)" stroke-width=".5" fill="none"/>
+<circle cx="30" cy="30" r="18" stroke="rgba(99,56,6,.25)" stroke-width=".5" fill="none"/>
+<circle cx="30" cy="30" r="4" fill="rgba(122,96,48,.5)"/>`,
+    condition: d => d.choseSilence
+  },
+  echo:{
+    badge:'ФИНАЛ III · ЭХО', bc:'#3c3489', bb:'rgba(60,52,137,.12)',
+    title:'Финал: Эхо',
+    text:`Каэль стоял над пустым провалом, когда услышал шаги на лестнице.<br><br>
+Вея. Она пришла сама — без стражей, без приказа. Просто пришла.<br><br>
+— Ты сказал «найди способ». Я нашла, — произнесла она. — Сама. Без слов.<br><br>
+Вдвоём — тот, кто нёс слова, и та, кто нёс молчание — они нашли то, чего не смог найти ни один из них поодиночке. Равновесие между речью и тишиной. Не победа одного над другим. <em>Со-существование.</em><br><br>
+Безмолвие отступило в свою настоящую форму — маленькую, как и должно быть. Тень между буквами. Не монстр.<br><br>
+<em>Неизвестно, навсегда ли. Но они будут смотреть вместе.</em>`,
+    emblem:`<circle cx="30" cy="30" r="28" stroke="rgba(60,52,137,.4)" stroke-width=".5" fill="none"/>
+<circle cx="20" cy="30" r="11" stroke="rgba(201,168,76,.5)" stroke-width="1" fill="none"/>
+<circle cx="40" cy="30" r="11" stroke="rgba(90,42,14,.5)" stroke-width="1" fill="none"/>
+<ellipse cx="30" cy="30" rx="4" ry="11" fill="rgba(176,164,140,.12)" stroke="rgba(201,168,76,.3)" stroke-width=".5"/>`,
+    condition: d => d.listenedVeia && d.paidMole
+  },
+  peace:{
+    badge:'ФИНАЛ V · МИР', bc:'#1a4a3a', bb:'rgba(26,74,58,.12)',
+    title:'Финал: Мир',
+    text:`Каэль нашёл настоящее имя Безмолвия.<br><br>
+Назвать вещь — значит ограничить её. Дать ей форму. У формы есть края, а у краёв — конец.<br><br>
+Слово «покой», произнесённое в самом центре пустоты — не убило Безмолвие. Оно дало ему то, чего оно никогда не имело: <em>достаточно</em>. Состояние насыщения.<br><br>
+Безмолвие сжалось до своего естественного размера. Тени между буквами, паузы между словами — так и должно быть. Оно было частью языка с самого начала. Просто выросло слишком большим.<br><br>
+Каэль вышел наверх с рукописью в руках. Пять страниц осталось. <em>Пять слов. Он решил беречь их — на случай, если что-то пойдёт не так.</em>`,
+    emblem:`<circle cx="30" cy="30" r="28" stroke="rgba(26,74,58,.5)" stroke-width=".5" fill="none"/>
+<path d="M 15 30 Q 22 18 30 30 Q 38 42 45 30" stroke="rgba(201,168,76,.5)" stroke-width="1.5" fill="none"/>
+<circle cx="30" cy="30" r="3" fill="rgba(201,168,76,.4)"/>`,
+    condition: d => d.endedWithPeace
+  },
+  names:{
+    badge:'ФИНАЛ VI · ИМЕНА', bc:'#4a2a6a', bb:'rgba(74,42,106,.12)',
+    title:'Финал: Имена',
+    text:`Каэль называл их всех. Каждого человека, которого встретил. Каждого, кого видел хоть раз.<br><br>
+Это не было заклинанием. В именах не было боевой силы. Безмолвие не умело их поглощать — потому что имена несут в себе не силу, а <em>связь</em>. А связь нельзя съесть.<br><br>
+Когда последнее имя было произнесено, рукопись опустела полностью. Каждая страница — чёрная.<br><br>
+Безмолвие исчезло.<br><br>
+Каэль стоял в пустой пещере с пустой книгой. Он не помнил ни одного заклинания. Все слова ушли.<br><br>
+<em>Но он помнил все имена. Это оказалось важнее.</em>`,
+    emblem:`<circle cx="30" cy="30" r="28" stroke="rgba(74,42,106,.5)" stroke-width=".5" fill="none"/>
+<text x="30" y="26" text-anchor="middle" font-family="serif" font-style="italic" font-size="8" fill="rgba(201,168,76,.5)">Сива</text>
+<text x="30" y="36" text-anchor="middle" font-family="serif" font-style="italic" font-size="7" fill="rgba(201,168,76,.35)">Вея</text>
+<text x="30" y="44" text-anchor="middle" font-family="serif" font-style="italic" font-size="6" fill="rgba(201,168,76,.25)">Моль</text>`,
+    condition: d => d.namedSilence && d.choseNames
+  },
+  silence:{
+    badge:'ФИНАЛ IV · МОЛЧАНИЕ', bc:'#b0a48c', bb:'rgba(255,255,255,.03)',
+    title:'Финал: Молчание',
+    text:`Слов оставалось мало. Безмолвие смотрело на него.<br><br>
+Каэль понял, что устал. Тридцать лет он шёл. Тридцать лет нёс рукопись, тратил слова, помогал незнакомым людям, и всё равно мир становился чуть тише с каждым годом.<br><br>
+Может быть, это не борьба. Может быть, это просто — время.<br><br>
+Он сделал шаг вперёд, в пустоту. Безмолвие приняло его — тихо, без боли. Его голос стал его частью. Его слова — частью того пространства между буквами, из которого и происходит всё.<br><br>
+<em>Но внутри пустоты он существует. И иногда — очень редко — кто-то слышит слово оттуда, где слов быть не должно. И это слово всегда звучит как имя.</em>`,
+    emblem:`<circle cx="30" cy="30" r="28" stroke="rgba(176,164,140,.14)" stroke-width=".5" fill="none"/>
+<circle cx="30" cy="30" r="18" stroke="rgba(176,164,140,.09)" stroke-width=".5" fill="none"/>
+<circle cx="30" cy="30" r="8" stroke="rgba(176,164,140,.06)" stroke-width=".5" fill="none"/>`,
+    condition: d => true // fallback
+  },
+};
+
+// ═══════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════
+function updW() {
+  const pct = (G.words/48)*100;
+  ['s-wbar','c-wbar','j-wbar','m-wbar'].forEach(id=>{
+    const e=document.getElementById(id); if(!e) return;
+    e.style.width=pct+'%';
+    e.style.background = G.words<=6?'rgba(200,75,26,.6)':G.words<=16?'rgba(122,96,48,.5)':'rgba(201,168,76,.5)';
+  });
+  ['s-wnum','c-wnum','j-wnum','m-wnum'].forEach(id=>{
+    const e=document.getElementById(id); if(!e) return;
+    e.textContent=G.words; e.classList.toggle('low',G.words<=8);
+  });
+}
+
+function notif(msg,dur=2000) {
+  const n=document.getElementById('notif');
+  n.textContent=msg; n.classList.add('on');
+  setTimeout(()=>n.classList.remove('on'),dur);
+}
+
+function fade(fn) {
+  const o=document.getElementById('fade-overlay');
+  o.classList.add('on');
+  setTimeout(()=>{ fn(); o.classList.remove('on'); }, 380);
+}
+
+function show(name) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const el = document.getElementById('screen-'+name);
+  if(el) el.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function spendW(n, el) {
+  G.words = Math.max(0,G.words-n);
+  G.d.usedWords += n;
+  updW();
+  // floating letters
+  if(el) {
+    const rc=el.getBoundingClientRect();
+    const ch='абвгдеёжзийклмн';
+    for(let i=0;i<Math.min(n,3);i++){
+      const d=document.createElement('div');
+      d.className='floater';
+      d.textContent=ch[Math.floor(Math.random()*ch.length)];
+      d.style.left=(rc.left+rc.width/2+(Math.random()-.5)*30)+'px';
+      d.style.top=(rc.top+(Math.random()-.5)*15)+'px';
+      d.style.animationDelay=(i*.1)+'s';
+      document.body.appendChild(d);
+      setTimeout(()=>d.remove(),1500);
+    }
+  }
+  sndLoss();
+}
+
+function updDots(an) {
+  document.querySelectorAll('.prog-dot').forEach((d,i)=>{
+    d.classList.remove('now','done');
+    if(i+1<an) d.classList.add('done');
+    if(i+1===an) d.classList.add('now');
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  SCENE ENGINE
+// ═══════════════════════════════════════════════════
+function getScene(id) { return STORY.find(s=>s.id===id); }
+
+function loadScene(id) {
+  // Special sentinels
+  if(id==='__do_ending__'){ showEnding(); return; }
+  const sc=getScene(id);
+  if(!sc){console.error('missing scene',id);return;}
+  if(sc.fn) sc.fn();
+
+  if(sc.sc==='map'||sc.id&&sc.id.startsWith('map_')){ loadMap(sc); return; }
+  if(sc.sc==='journal'){ showJournal(sc.jrnNext); return; }
+  if(sc.sc==='combat'||sc.enemy){ loadCombat(sc); return; }
+  if(sc.sc==='ending'||sc.id==='ending'||sc.id==='__do_ending__'){ showEnding(); return; }
+
+  sndPage();
+  fade(()=>{
+    show('story');
+    if(sc.bg) setBG(sc.bg);
+  else if(sc.id&&sc.id.startsWith('prologue')) setBG('title');
+    if(sc.an){ G.actNum=sc.an; updDots(sc.an); }
+    document.getElementById('s-act-hdr').textContent = sc.act||'';
+    document.getElementById('s-act-lbl').textContent = sc.act||'';
+    document.getElementById('s-title').textContent = sc.title||'';
+    document.getElementById('s-text').innerHTML = sc.text||'';
+
+    const rule=document.getElementById('s-rule'), clbl=document.getElementById('c-label'), cont=document.getElementById('choices');
+    cont.innerHTML='';
+    if(sc.ch && sc.ch.length){
+      rule.style.display='block'; clbl.style.display='block';
+      sc.ch.forEach(c=>{
+        const btn=document.createElement('button');
+        btn.className='choice-btn';
+        btn.innerHTML=c.t+(c.cost?`<span class="c-cost">−${c.cost} сл.</span>`:'');
+        if(c.cost && G.words<c.cost) btn.classList.add('off');
+        btn.onclick=()=>{
+          if(c.fn) c.fn();
+          if(c.cost) spendW(c.cost,btn);
+          loadScene(c.nx);
+        };
+        cont.appendChild(btn);
+      });
+    } else { rule.style.display='none'; clbl.style.display='none'; }
+    updW();
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  MAP
+// ═══════════════════════════════════════════════════
+let _mapNext='';
+function loadMap(sc) {
+  _mapNext = sc.mapNext;
+  sndPage();
+  fade(()=>{
+    show('map');
+    setBG('source');
+    const stops=['village','city','source','end'];
+    const cur = stops.indexOf(sc.mapStop);
+    stops.forEach((s,i)=>{
+      const el=document.getElementById('ms-'+s);
+      if(!el) return;
+      el.classList.remove('vis','cur');
+      if(i<=cur) el.classList.add('vis');
+      if(i===cur+1) el.classList.add('cur');
+    });
+    // words spent per act
+    const mapSpentEls = {
+      village: {el:'msp-village', spent: 48-(G.d.wordsAfterAct1||G.words)},
+      city:    {el:'msp-city',    spent: (G.d.wordsAfterAct1||48)-(G.d.wordsAfterAct2||G.words)},
+    };
+    Object.values(mapSpentEls).forEach(({el,spent})=>{
+      const spEl=document.getElementById(el);
+      if(spEl && spent>0) spEl.textContent=`−${spent} слов`;
+      else if(spEl) spEl.textContent='';
+    });
+    document.getElementById('ms-used').textContent=G.d.usedWords;
+    document.getElementById('ms-left').textContent=G.words;
+    document.getElementById('ms-spells').textContent=G.spells.length;
+    // Choices summary
+    const summary=document.getElementById('map-choices-summary');
+    if(summary){
+      const lines=[];
+      if(G.d.helpedVillage) lines.push('Вернул имя Сиве');
+      if(G.d.helpedMartha) lines.push('Дал Марте слово «помни»');
+      if(G.d.metTim) lines.push('Познакомился с Тимом');
+      if(G.d.hasTeacherBook) lines.push('Взял книжку учителя');
+      if(G.d.paidMole) lines.push('Узнал правду от Моля');
+      if(G.d.listenedVeia) lines.push('Выслушал историю Веи');
+      if(G.d.shownArchive) lines.push('Показал Вее архивную страницу');
+      if(G.d.veiaPromised) lines.push('Вея пообещала прийти');
+      if(G.d.foundArchive) lines.push('Нашёл орденский архив');
+      if(G.d.sawFlowers) lines.push('Увидел живые цветы у руин');
+      summary.innerHTML = lines.length ? lines.join(' · ') : '';
+    }
+    updW();
+  });
+}
+function mapContinue() { sndPage(); loadScene(_mapNext); }
+
+// ═══════════════════════════════════════════════════
+//  COMBAT
+// ═══════════════════════════════════════════════════
+function loadCombat(sc) {
+  const e=sc.enemy;
+  G.eHp=e.hp; G.eMaxHp=e.hp; G.combatNext=sc.combatNext; G.combatTurn=0; G.combatLog=[];
+  fade(()=>{
+    show('combat');
+    setBG('combat');
+    if(sc.act) document.getElementById('c-act-hdr').textContent=sc.act;
+    document.getElementById('e-name').textContent=e.name;
+    document.getElementById('e-desc').textContent=e.desc;
+    document.getElementById('e-phase').textContent='';
+    document.getElementById('clog-hist').innerHTML='';
+    document.getElementById('clog').innerHTML='Произнеси заклинание, Писарь.';
+    updEHP(); renderPills(); clrAllSlots(); updW();
+  });
+}
+
+function updEHP() {
+  const pct=Math.max(0,Math.round((G.eHp/G.eMaxHp)*100));
+  const fill=document.getElementById('e-hp');
+  fill.style.width=pct+'%';
+  fill.style.background=pct>60?'var(--ember-dim)':pct>30?'var(--gold-dim)':'rgba(59,42,90,.7)';
+  const ph=document.getElementById('e-phase');
+  if(pct>60) ph.textContent='';
+  else if(pct>30){ ph.style.color='var(--gold-dim)'; ph.textContent='▸ БЕЗМОЛВИЕ ПОГЛОЩАЕТ БЫСТРЕЕ'; }
+  else if(pct>0){ ph.style.color='var(--ember)'; ph.textContent='▸ БЕЗМОЛВИЕ АГОНИЗИРУЕТ'; }
+  else { ph.style.color='var(--ash-light)'; ph.textContent='▸ БЕЗМОЛВИЕ ОТСТУПАЕТ'; }
+}
+
+function renderPills() {
+  const cont=document.getElementById('wgrps'); cont.innerHTML='';
+  [{lbl:'СУЩЕСТВИТЕЛЬНЫЕ',type:'noun',list:WD.noun},
+   {lbl:'ГЛАГОЛЫ',type:'verb',list:WD.verb},
+   {lbl:'ПРИЛАГАТЕЛЬНЫЕ',type:'adj',list:WD.adj}].forEach(g=>{
+    const d=document.createElement('div');
+    d.innerHTML=`<div class="wg-lbl">${g.lbl}</div><div class="wpills" id="wp-${g.type}"></div>`;
+    cont.appendChild(d);
+    g.list.forEach(w=>{
+      const p=document.createElement('span');
+      p.className=`pill ${g.type}`; p.textContent=w.w;
+      p.title=w.desc||w.tag||'';
+      p.onclick=()=>setSlot(g.type,w.w,p);
+      d.querySelector(`#wp-${g.type}`).appendChild(p);
+    });
+  });
+}
+
+function setSlot(type,word,el) {
+  if(G.slots[type]) document.querySelectorAll(`.pill[data-w="${G.slots[type]}"]`).forEach(p=>p.classList.remove('used'));
+  G.slots[type]=word; el.dataset.w=word; el.classList.add('used');
+  const sl=document.getElementById('sl-'+type);
+  sl.textContent=word; sl.className=`slot set ${type}`;
+  updSpell();
+}
+
+function clrSlot(type) {
+  if(!G.slots[type]) return;
+  document.querySelectorAll(`.pill`).forEach(p=>{ if(p.dataset.w===G.slots[type]&&p.classList.contains(type)) p.classList.remove('used'); });
+  G.slots[type]=null;
+  const sl=document.getElementById('sl-'+type);
+  sl.textContent={adj:'прил.',noun:'сущ.',verb:'гл.'}[type];
+  sl.className='slot';
+  updSpell();
+}
+function clrAllSlots(){ ['adj','noun','verb'].forEach(clrSlot); }
+
+function updSpell() {
+  const {adj,noun,verb}=G.slots;
+  const out=document.getElementById('spell-out'), fx=document.getElementById('spell-fx'), cb=document.getElementById('cast-btn');
+  if(!noun&&!verb){ out.textContent='– – –'; out.classList.remove('on'); fx.textContent=''; cb.disabled=true; return; }
+  const sent=[adj,noun,verb].filter(Boolean).join(' ');
+  out.textContent=`"${sent.charAt(0).toUpperCase()+sent.slice(1)}"`;
+  out.classList.add('on');
+  let pow=0,cost=0;
+  if(noun){ const d=WD.noun.find(w=>w.w===noun); pow+=d.pow; cost+=d.cost; }
+  if(verb){ const d=WD.verb.find(w=>w.w===verb); pow=Math.round(pow*d.mult); cost+=d.cost; }
+  if(adj){  const d=WD.adj.find(w=>w.w===adj);   pow+=d.bon; cost+=d.cost; }
+  const absorb=Math.round(pow*(G.eHp<G.eMaxHp*.3?.3:.5)), real=pow-absorb;
+  fx.textContent=`Поглощает ${absorb} · Наносит ${real} · Стоит ${cost} слов`;
+  cb.disabled=G.words<cost;
+}
+
+function castSpell() {
+  const {adj,noun,verb}=G.slots;
+  if(!noun&&!verb) return;
+  const nD=noun?WD.noun.find(w=>w.w===noun):null;
+  const vD=verb?WD.verb.find(w=>w.w===verb):null;
+  const aD=adj?WD.adj.find(w=>w.w===adj):null;
+  let pow=0,cost=0;
+  if(nD){pow+=nD.pow;cost+=nD.cost;}
+  if(vD){pow=Math.round(pow*vD.mult);cost+=vD.cost;}
+  if(aD){pow+=aD.bon;cost+=aD.cost;}
+  spendW(cost,document.getElementById('cast-btn'));
+  if(aD&&aD.restore){ G.words=Math.min(48,G.words+aD.restore); updW(); }
+  const absR=G.eHp<G.eMaxHp*.3?.3:.5;
+  const absorb=Math.round(pow*absR), real=pow-absorb;
+  G.eHp=Math.max(0,G.eHp-real); updEHP(); G.combatTurn++;
+  const sent=[adj,noun,verb].filter(Boolean).join(' ');
+  G.spells.push(sent); sndSpell();
+  // history
+  const hist=document.getElementById('clog-hist'), prev=document.getElementById('clog').innerHTML;
+  if(G.combatTurn>1&&prev&&prev!=='Произнеси заклинание, Писарь.'){
+    const d=document.createElement('div'); d.innerHTML=prev; hist.prepend(d);
+  }
+  let lg=`<span class="sp">"${sent.charAt(0).toUpperCase()+sent.slice(1)}"</span> — `;
+  lg+=real>0?`<span class="hit">−${real} силы</span>. Поглощено: ${absorb}.`:`<span class="miss">Слово поглощено полностью.</span>`;
+  if(aD&&aD.desc) lg+=` <em>${aD.desc}.</em>`;
+  document.getElementById('clog').innerHTML=lg;
+  clrAllSlots();
+  if(G.words<=0){ setTimeout(()=>{ notif('Слова закончились...',3000); setTimeout(()=>loadScene(G.combatNext),2500); },600); return; }
+  if(G.eHp<=0){ document.getElementById('clog').innerHTML+=`<br><span class="sp">Безмолвие отступает...</span>`; setTimeout(()=>loadScene(G.combatNext),2000); return; }
+  notif(`Осталось ${G.words} слов · ход ${G.combatTurn}`);
+}
+
+// ═══════════════════════════════════════════════════
+//  JOURNAL
+// ═══════════════════════════════════════════════════
+let _jrnNext='';
+function showJournal(next) {
+  _jrnNext=next;
+  sndPage();
+  fade(()=>{
+    show('journal');
+    setBG('source');
+    const list=document.getElementById('poem-list'); list.innerHTML='';
+    if(!G.spells.length){
+      list.innerHTML=`<li class="poem-line" style="opacity:1;color:var(--ash)">— Каэль не произнёс ни одного заклинания.<br><span style="font-size:.85rem;display:block;margin-top:8px;color:var(--ash)">Слова сохранены.</span></li>`;
+    } else {
+      // Header poem intro
+      const intro=document.createElement('li');
+      intro.className='poem-line';
+      intro.style.cssText='opacity:0;font-size:.78rem;color:var(--ash);font-style:normal;font-family:var(--cinzel,Cinzel,serif);letter-spacing:.12em;margin-bottom:14px;animation-delay:0s';
+      intro.textContent='ЗАКЛИНАНИЯ КАЭЛЯ — ПОЭМА В СЛОВАХ';
+      list.appendChild(intro);
+      setTimeout(()=>intro.style.opacity='1', 100);
+
+      G.spells.forEach((s,i)=>{
+        const li=document.createElement('li'); li.className='poem-line';
+        li.style.animationDelay=(i*.18+.3)+'s';
+        li.innerHTML=s.split(' ').map(w=>`<span class="sw">${w}</span>`).join(' ')
+          +`<span style="font-size:.7rem;color:var(--ash);margin-left:8px;font-style:normal">·</span>`;
+        list.appendChild(li);
+      });
+
+      // Footer: words left
+      const foot=document.createElement('li');
+      foot.style.cssText=`opacity:0;animation-delay:${G.spells.length*.18+.6}s;font-size:.75rem;color:var(--ash);font-style:normal;margin-top:18px;border-top:1px solid rgba(201,168,76,.12);padding-top:14px`;
+      foot.className='poem-line';
+      foot.innerHTML=`В рукописи осталось <span style="color:var(--gold);font-family:Cinzel,serif">${G.words}</span> живых слов`;
+      list.appendChild(foot);
+    }
+    updW();
+  });
+}
+function jrnContinue(){ sndPage(); loadScene(_jrnNext); }
+
+// ═══════════════════════════════════════════════════
+//  ENDING
+// ═══════════════════════════════════════════════════
+function showEnding() {
+  const d=G.d;
+  // Priority-ordered condition check for 6 endings
+  let type='silence';
+  if(d.namedSilence && d.choseNames) type='names';
+  else if(d.endedWithPeace) type='peace';
+  else if(d.choseNames && (d.helpedVillage || d.intentionalSilence)) type='light';
+  else if(d.listenedVeia && (d.paidMole || d.shownArchive)) type='echo';
+  else if(d.choseSilence || d.intentionalSilence) type='ash';
+  
+  // Build personal epilogue lines based on journey
+  const epilogue = [];
+  if(d.helpedVillage) epilogue.push('Сива вспомнила своё имя.');
+  if(d.helpedMartha) epilogue.push('Марта успела передать «помни» дальше.');
+  if(d.metTim) epilogue.push('Тим до сих пор шепчет своё имя каждое утро.');
+  if(d.veiaPromised && type==='echo') epilogue.push('Вея пришла — как обещала.');
+  if(d.hasTeacherBook) epilogue.push('Книжка учителя осталась у Каэля.');
+  if(d.sawFlowers) epilogue.push('Серые цветы у руин продолжают жить.');
+  if(d.heardAboutSilentChild) epilogue.push('Ребёнок из молчащего города однажды заплакал. Отец был рад.');
+  G.d._epilogue = epilogue;
+
+  if(!G.unlocked.includes(type)) G.unlocked.push(type);
+  try{ localStorage.setItem('woa_e',JSON.stringify(G.unlocked)); }catch(e){}
+  const eD=ENDS[type];
+  if(!eD){ console.error('No ending data for',type); return; }
+
+  const bgMap={light:'end_light',ash:'end_ash',echo:'end_echo',
+               silence:'end_silence',peace:'end_ash',names:'end_light'};
+  sndEnd(['peace','names','light'].includes(type)?'light':type);
+
+  fade(()=>{
+    show('ending'); setBG(bgMap[type]||'end_silence');
+    document.getElementById('end-hdr-lbl').textContent=eD.badge;
+    document.getElementById('end-emblem').innerHTML=eD.emblem;
+    const badge=document.getElementById('end-badge');
+    badge.textContent=eD.badge; badge.style.background=eD.bb;
+    badge.style.color=eD.bc; badge.style.border=`1px solid ${eD.bc}44`;
+    document.getElementById('end-title').textContent=eD.title;
+    document.getElementById('end-text').innerHTML=eD.text;
+    document.getElementById('end-used').textContent=d.usedWords;
+    document.getElementById('end-left').textContent=G.words;
+    document.getElementById('end-sp').textContent=G.spells.length;
+    const poem=document.getElementById('end-poem');
+    let poemHTML = G.spells.length
+      ? G.spells.map(s=>s.split(' ').map(w=>`<span class="sw">${w}</span>`).join(' ')).join('<br>')
+      : '<em style="color:var(--ash)">Писарь не произнёс ни одного заклинания</em>';
+    // Add personal epilogue
+    if(d._epilogue && d._epilogue.length){
+      poemHTML += `<br><br><span style="font-family:Cinzel,serif;font-size:.6rem;letter-spacing:.18em;color:var(--ash);display:block;margin:.8rem 0 .5rem">ЭПИЛОГ</span>`;
+      poemHTML += d._epilogue.map(line=>`<span style="font-size:.85rem;color:var(--ash-light);font-style:normal;display:block;line-height:1.8">${line}</span>`).join('');
+    }
+    poem.innerHTML=poemHTML;
+    ['light','ash','echo','silence','peace','names'].forEach(t=>{
+      const dt=document.getElementById('dot-'+t);
+      if(dt) dt.classList.toggle('got',G.unlocked.includes(t));
+    });
+    updW();
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════
+function goTitle(){ sndPage(); fade(()=>{ show('title'); setBG('title'); }); }
+function startGame(){
+  G.words=48; G.spells=[]; G.combatLog=[]; G.actNum=1;
+  G.d={helpedVillage:false,helpedMartha:false,paidMole:false,listenedVeia:false,usedWords:0,choseSilence:false,choseNames:false,namedIt:false,namedSilence:false,endedWithPeace:false,intentionalSilence:false,veiaPromised:false,shownArchive:false,foundArchive:false,metTim:false,metLer:false,hasTeacherBook:false,sawFlowers:false,heardAboutSilentChild:false,preparedNight:false,waitedOutside:false,wordsAfterAct1:48,wordsAfterAct2:48};
+  G.slots={adj:null,noun:null,verb:null};
+  updW(); loadScene('prologue');
+}
+function restartGame(){ startGame(); }
+
+// ═══════════════════════════════════════════════════
+//  CANVAS BACKGROUNDS
+// ═══════════════════════════════════════════════════
+const cv=document.getElementById('bg-canvas');
+const cx=cv.getContext('2d');
+let bgNow='title', bgT=0;
+
+function resCV(){ cv.width=window.innerWidth; cv.height=window.innerHeight; }
+window.addEventListener('resize',resCV); resCV();
+
+function setBG(scene){ bgNow=scene; }
+
+// ── Helpers ──
+function rng(seed){ let x=Math.sin(seed)*10000; return x-Math.floor(x); }
+
+// ── Shared drawing helpers ──
+function drawSky(grad){ cx.fillStyle=grad; cx.fillRect(0,0,cv.width,cv.height); }
+function stars(t,n=40,bright=.5){
+  for(let i=0;i<n;i++){
+    const px=rng(i*37)*cv.width, py=rng(i*71)*cv.height*.5;
+    const tw=.2+.8*Math.abs(Math.sin(t*.0009+i));
+    cx.beginPath(); cx.arc(px,py,.6+rng(i*.5)*.5,0,Math.PI*2);
+    cx.fillStyle=`rgba(242,232,213,${tw*bright*.65})`; cx.fill();
+  }
+}
+function moon(x,y,r){
+  const g=cx.createRadialGradient(x,y,0,x,y,r);
+  g.addColorStop(0,'rgba(242,232,213,.18)'); g.addColorStop(.55,'rgba(201,168,76,.08)'); g.addColorStop(1,'transparent');
+  cx.beginPath(); cx.arc(x,y,r,0,Math.PI*2); cx.fillStyle=g; cx.fill();
+  cx.beginPath(); cx.arc(x,y,r*.48,0,Math.PI*2); cx.strokeStyle='rgba(242,232,213,.09)'; cx.lineWidth=.5; cx.stroke();
+}
+function flame(x,y,h,w,t,sd=0){
+  const wv=Math.sin(t*.0038+sd)*w*.4;
+  const g=cx.createRadialGradient(x+wv*.6,y-h*.1,0,x,y-h*.5,h);
+  g.addColorStop(0,'rgba(255,200,50,.8)'); g.addColorStop(.25,'rgba(230,100,20,.6)');
+  g.addColorStop(.6,'rgba(160,50,10,.25)'); g.addColorStop(1,'transparent');
+  cx.beginPath(); cx.ellipse(x+wv*.5,y-h*.45,w*.45,h*.62,0,0,Math.PI*2);
+  cx.fillStyle=g; cx.fill();
+  // inner brighter core
+  const g2=cx.createRadialGradient(x+wv*.3,y-h*.2,0,x+wv*.3,y-h*.2,w*.3);
+  g2.addColorStop(0,'rgba(255,240,180,.5)'); g2.addColorStop(1,'transparent');
+  cx.fillStyle=g2; cx.fill();
+}
+function vign(a=.78){
+  const W=cv.width,H=cv.height;
+  const v=cx.createRadialGradient(W/2,H/2,H*.12,W/2,H/2,H*.88);
+  v.addColorStop(0,'transparent'); v.addColorStop(1,`rgba(5,3,1,${a})`);
+  cx.fillStyle=v; cx.fillRect(0,0,W,H);
+}
+function ground(y, col='#0d0a06'){
+  cx.fillStyle=col; cx.fillRect(0,y,cv.width,cv.height-y);
+}
+// Draw Kael silhouette at (x,y) with given height, walking animation
+function kael(x,y,h,t,glowAlpha=.18){
+  const W=cv.width,H=cv.height;
+  const step=Math.sin(t*.006)*1.8;
+  const col='#0a0805';
+  // shadow
+  cx.beginPath(); cx.ellipse(x,y+3,h*.35,h*.08,0,0,Math.PI*2);
+  cx.fillStyle='rgba(0,0,0,.25)'; cx.fill();
+  // cloak flowing
+  cx.fillStyle=col;
+  cx.beginPath(); cx.moveTo(x-h*.32,y-h*.28); cx.bezierCurveTo(x-h*.38,y,x-h*.28+step,y+h*.28,x-h*.18+step*1.2,y+h*.32);
+  cx.lineTo(x+h*.18-step*1.2,y+h*.32); cx.bezierCurveTo(x+h*.28-step,y,x+h*.38,y,x+h*.32,y-h*.28); cx.fill();
+  // body core
+  cx.beginPath(); cx.ellipse(x,y-h*.15,h*.14,h*.32,0,0,Math.PI*2); cx.fillStyle=col; cx.fill();
+  // head
+  cx.beginPath(); cx.arc(x,y-h*.55,h*.15,0,Math.PI*2); cx.fill();
+  // hood shadow
+  cx.beginPath(); cx.arc(x,y-h*.52,h*.13,0,Math.PI); cx.fillStyle='rgba(0,0,0,.3)'; cx.fill();
+  // left leg
+  cx.beginPath(); cx.moveTo(x-h*.08,y+h*.28); cx.lineTo(x-h*.12+step,y+h*.5); cx.strokeStyle=col; cx.lineWidth=h*.12; cx.lineCap='round'; cx.stroke();
+  // right leg
+  cx.beginPath(); cx.moveTo(x+h*.08,y+h*.28); cx.lineTo(x+h*.12-step,y+h*.5); cx.stroke();
+  // staff
+  cx.beginPath(); cx.moveTo(x+h*.22,y-h*.3); cx.lineTo(x+h*.3+step*.5,y+h*.55); cx.strokeStyle=col; cx.lineWidth=h*.07; cx.lineCap='round'; cx.stroke();
+  // rucopis glow (book under cloak)
+  if(glowAlpha>0){
+    const rg=cx.createRadialGradient(x-h*.08,y,0,x-h*.08,y,h*.6);
+    rg.addColorStop(0,`rgba(201,168,76,${glowAlpha})`); rg.addColorStop(1,'transparent');
+    cx.fillStyle=rg; cx.fillRect(x-h*.7,y-h*.65,h*1.4,h*1.3);
+  }
+}
+function silhouette(x,y,w,h,col='#0a0805'){
+  cx.fillStyle=col; cx.fillRect(x,y,w,h);
+}
+function house(x,y,w,h, lit=false){
+  // walls
+  cx.fillStyle='#0f0c08'; cx.fillRect(x,y,w,h);
+  // roof
+  cx.beginPath(); cx.moveTo(x-2,y); cx.lineTo(x+w/2,y-h*.42); cx.lineTo(x+w+2,y); cx.fillStyle='#0b0907'; cx.fill();
+  // window
+  if(lit){
+    const wx=x+w*.2,wy=y+h*.25,ww=w*.3,wh=h*.28;
+    const wg=cx.createRadialGradient(wx+ww/2,wy+wh/2,0,wx+ww/2,wy+wh/2,w*.35);
+    wg.addColorStop(0,'rgba(220,150,40,.32)'); wg.addColorStop(1,'transparent');
+    cx.fillStyle=wg; cx.fillRect(wx-4,wy-4,ww+8,wh+8);
+    cx.fillStyle='rgba(210,140,35,.22)'; cx.fillRect(wx,wy,ww,wh);
+  }
+}
+
+// ════════════════════════════════════
+// TITLE: Kaël on a road at night, ruins burning on horizon
+// ════════════════════════════════════
+function drawTitle(t){
+  const W=cv.width,H=cv.height; cx.clearRect(0,0,W,H);
+  const sky=cx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#060403'); sky.addColorStop(.5,'#100d08'); sky.addColorStop(1,'#1c1409');
+  drawSky(sky); stars(t,60,.7); moon(W*.75,H*.15,W*.1);
+  // distant mountains
+  cx.beginPath(); cx.moveTo(0,H*.72);
+  [.08,.2,.31,.45,.58,.7,.82,.92].forEach((rx,i)=>{
+    cx.lineTo(W*rx, H*(.45+Math.sin(i*1.4)*.08+Math.cos(i*.9)*.05));
+  });
+  cx.lineTo(W,H*.65); cx.lineTo(W,H); cx.lineTo(0,H); cx.fillStyle='#0c0905'; cx.fill();
+  // monastery ruins glowing on a hilltop (mid-left)
+  const ruinX=W*.27, ruinY=H*.47;
+  // ruin glow halo
+  const rg=cx.createRadialGradient(ruinX,ruinY,0,ruinX,ruinY,W*.12);
+  rg.addColorStop(0,`rgba(220,100,20,${.18+.05*Math.sin(t*.0012)})`); rg.addColorStop(.5,'rgba(180,60,10,.06)'); rg.addColorStop(1,'transparent');
+  cx.fillStyle=rg; cx.fillRect(ruinX-W*.14,ruinY-H*.12,W*.28,H*.18);
+  // ruin walls silhouette
+  cx.fillStyle='#0a0704';
+  cx.fillRect(ruinX-18,ruinY-20,8,22); // left pillar
+  cx.fillRect(ruinX+10,ruinY-16,7,18); // right pillar
+  cx.fillRect(ruinX-5,ruinY-28,12,5);  // broken arch
+  // fires in ruins
+  flame(ruinX-12,ruinY,14,6,t,0);
+  flame(ruinX+4,ruinY,10,5,t,2);
+  flame(ruinX+14,ruinY,8,4,t,4);
+  // long road perspective
+  const rd=cx.createLinearGradient(W/2,H*.55,W/2,H);
+  rd.addColorStop(0,'rgba(40,30,14,0)'); rd.addColorStop(.3,'rgba(40,30,14,.5)'); rd.addColorStop(1,'rgba(40,30,14,.9)');
+  cx.beginPath();
+  cx.moveTo(W*.41,H); cx.lineTo(W*.465,H*.56);
+  cx.lineTo(W*.535,H*.56); cx.lineTo(W*.59,H);
+  cx.fillStyle=rd; cx.fill();
+  // road stones
+  for(let i=0;i<8;i++){
+    const ry=H*.6+i*(H*.055), rw=4+(i*5), rop=.06+i*.015;
+    cx.strokeStyle=`rgba(60,45,20,${rop})`; cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(W/2-rw,ry); cx.lineTo(W/2+rw,ry); cx.stroke();
+  }
+  ground(H*.72,'#0d0a06');
+  // Kael walking toward the ruins
+  const kx=W/2+Math.sin(t*.0003)*3, ky=H*.685;
+  kael(kx,ky,38,t,.2);
+  vign(.75);
+}
+
+// ════════════════════════════════════
+// LORE: same as title but Kael paused, reading rucopis
+// ════════════════════════════════════
+function drawLore(t){
+  const W=cv.width,H=cv.height; cx.clearRect(0,0,W,H);
+  const sky=cx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#060403'); sky.addColorStop(.5,'#0f0c08'); sky.addColorStop(1,'#1a1309');
+  drawSky(sky); stars(t,50,.6); moon(W*.22,H*.18,W*.09);
+  // mountains
+  cx.beginPath(); cx.moveTo(0,H*.7);
+  [.12,.26,.4,.55,.68,.8,.9].forEach((rx,i)=>cx.lineTo(W*rx,H*(.48+Math.sin(i*1.6)*.07)));
+  cx.lineTo(W,H*.66); cx.lineTo(W,H); cx.lineTo(0,H); cx.fillStyle='#0c0905'; cx.fill();
+  ground(H*.7,'#0d0a06');
+  // Kael STOPPED, holding open book — book glows
+  const kx=W/2, ky=H*.68;
+  kael(kx,ky,36,0,.0); // t=0 so no walk animation
+  // open book glow — stronger, pulsing
+  const bookAlpha=.28+.1*Math.sin(t*.0015);
+  const bg=cx.createRadialGradient(kx-8,ky-8,0,kx-8,ky-8,45);
+  bg.addColorStop(0,`rgba(201,168,76,${bookAlpha})`); bg.addColorStop(.5,'rgba(180,140,40,.1)'); bg.addColorStop(1,'transparent');
+  cx.fillStyle=bg; cx.fillRect(kx-55,ky-55,110,90);
+  // book shape in hands
+  cx.fillStyle='rgba(240,220,160,.12)';
+  cx.beginPath(); cx.rect(kx-14,ky-18,28,20); cx.fill();
+  // pages glow
+  cx.fillStyle=`rgba(255,240,180,${.15+.08*Math.sin(t*.002)})`;
+  cx.beginPath(); cx.rect(kx-12,ky-17,12,18); cx.fill();
+  cx.beginPath(); cx.rect(kx+1,ky-17,12,18); cx.fill();
+  // floating letters from book (lore of the world being revealed)
+  const abc='слово свет имя жизнь огонь тень';
+  abc.split(' ').forEach((w,i)=>{
+    const angle=(t*.0004+i*(Math.PI*2/6));
+    const dist=35+15*Math.sin(t*.0018+i);
+    const lx=kx+Math.cos(angle)*dist, ly=(ky-10)+Math.sin(angle)*dist*.4;
+    const alpha=.12+.1*Math.sin(t*.0025+i);
+    cx.fillStyle=`rgba(201,168,76,${alpha})`; cx.font=`italic 11px "IM Fell English"`; cx.fillText(w,lx,ly);
+  });
+  vign(.78);
+}
+
+// ════════════════════════════════════
+// VILLAGE — Act I: dying village at dusk
+// Кael arrives, sees children at the well, Mol with scales
+// ════════════════════════════════════
+function drawVillage(t){
+  const W=cv.width,H=cv.height; cx.clearRect(0,0,W,H);
+  // dusk sky — amber-to-dark
+  const sky=cx.createLinearGradient(0,0,0,H*.68);
+  sky.addColorStop(0,'#160a04'); sky.addColorStop(.38,'#241205'); sky.addColorStop(.7,'#2e1606'); sky.addColorStop(1,'#1a1108');
+  drawSky(sky); stars(t,15,.25);
+  // dying sun glow on right horizon
+  const sunG=cx.createRadialGradient(W*.78,H*.64,0,W*.78,H*.64,W*.4);
+  sunG.addColorStop(0,'rgba(230,110,20,.2)'); sunG.addColorStop(.4,'rgba(200,70,10,.07)'); sunG.addColorStop(1,'transparent');
+  cx.fillStyle=sunG; cx.fillRect(0,0,W,H);
+  // rolling dead fields
+  cx.beginPath(); cx.moveTo(0,H*.63);
+  for(let x=0;x<=W;x+=10){
+    const y=H*.62+Math.sin(x*.011)*H*.03+Math.sin(x*.019+1)*H*.015;
+    cx.lineTo(x,y);
+  }
+  cx.lineTo(W,H); cx.lineTo(0,H); cx.fillStyle='#110d08'; cx.fill();
+  // dead wheat stalks
+  for(let i=0;i<18;i++){
+    const fx=W*.52+i*W*.027+Math.sin(i*2.3)*5, fy=H*.66+Math.sin(i)*H*.012;
+    const lean=Math.sin(t*.0008+i)*.15;
+    cx.strokeStyle='rgba(45,32,14,.55)'; cx.lineWidth=1.2;
+    cx.beginPath(); cx.moveTo(fx,fy); cx.lineTo(fx+lean*20,fy-H*.07); cx.stroke();
+    // ear drooping
+    cx.beginPath(); cx.moveTo(fx+lean*20,fy-H*.07); cx.lineTo(fx+lean*20+4,fy-H*.06); cx.stroke();
+  }
+  // village houses — dark, no lights except Mol's lantern
+  const houseData=[
+    {x:.1,w:.07,h:.12,lit:false},{x:.19,w:.09,h:.14,lit:false},
+    {x:.29,w:.06,h:.1,lit:false},{x:.36,w:.11,h:.16,lit:false},
+    {x:.75,w:.07,h:.11,lit:false},{x:.83,w:.09,h:.13,lit:false},{x:.91,w:.06,h:.09,lit:false},
+  ];
+  houseData.forEach(h=>house(h.x*W, H*.63-h.h*H, h.w*W, h.h*H, h.lit));
+  // WELL in centre
+  const wellX=W*.46, wellY=H*.635;
+  cx.fillStyle='#141009'; cx.fillRect(wellX-8,wellY,16,10);
+  cx.beginPath(); cx.arc(wellX,wellY,8,Math.PI,0); cx.strokeStyle='#100d07'; cx.lineWidth=3; cx.lineCap='round'; cx.stroke();
+  // well rope
+  cx.beginPath(); cx.moveTo(wellX-2,wellY-8); cx.lineTo(wellX-2,wellY); cx.strokeStyle='rgba(80,60,25,.4)'; cx.lineWidth=1; cx.stroke();
+  // DYING CENTRAL FIRE — small, guttering
+  const fh=10+Math.sin(t*.0045)*3;
+  flame(wellX+24,H*.64,fh,6,t,0);
+  // CHILDREN at the well — 4 kids sitting, heads down, NO play
+  const childPos=[wellX-22,wellX-12,wellX+6,wellX+18];
+  childPos.forEach((px,i)=>{
+    cx.fillStyle='#0b0807';
+    // sitting posture — hunched
+    cx.beginPath(); cx.arc(px,H*.638,4,0,Math.PI*2); cx.fill(); // head
+    cx.beginPath(); cx.ellipse(px,H*.648,4,5,0,0,Math.PI*2); cx.fill(); // body curled
+    // arms on knees
+    cx.beginPath(); cx.moveTo(px-4,H*.645); cx.lineTo(px-6,H*.652); cx.strokeStyle='#0b0807'; cx.lineWidth=1.5; cx.stroke();
+    cx.beginPath(); cx.moveTo(px+4,H*.645); cx.lineTo(px+6,H*.652); cx.stroke();
+  });
+  // MOL (Mole) — fat silhouette with scales on the right
+  const molX=W*.62, molY=H*.635;
+  cx.fillStyle='#0d0a07';
+  cx.beginPath(); cx.ellipse(molX,molY-14,9,13,0,0,Math.PI*2); cx.fill(); // fat body
+  cx.beginPath(); cx.arc(molX,molY-27,7,0,Math.PI*2); cx.fill(); // head
+  // scales
+  cx.beginPath(); cx.moveTo(molX+10,molY-22); cx.lineTo(molX+22,molY-22); cx.strokeStyle='rgba(60,45,20,.5)'; cx.lineWidth=1.5; cx.stroke();
+  cx.beginPath(); cx.moveTo(molX+16,molY-22); cx.lineTo(molX+16,molY-12); cx.stroke(); // centre pole
+  cx.beginPath(); cx.arc(molX+11,molY-16,4,0,Math.PI*2); cx.strokeStyle='rgba(60,45,20,.4)'; cx.lineWidth=1; cx.fill(); // pan 1
+  cx.beginPath(); cx.arc(molX+21,molY-18,4,0,Math.PI*2); cx.fill(); // pan 2 (heavier - bread)
+  // Lantern at Mol's feet
+  flame(molX+14,molY,8,4,t,3);
+  // Kael arriving from left
+  kael(W*.18,H*.655,30,t,.15);
+  // ground mist
+  const mist=cx.createLinearGradient(0,H*.6,0,H*.72);
+  mist.addColorStop(0,'transparent'); mist.addColorStop(.5,'rgba(28,20,10,.3)'); mist.addColorStop(1,'rgba(18,13,7,.7)');
+  cx.fillStyle=mist; cx.fillRect(0,H*.6,W,H*.4);
+  vign(.8);
+}
+
+// ════════════════════════════════════
+// NAMES GIVEN — children lit up, Siva smiling
+// ════════════════════════════════════
+function drawVillageLight(t){
+  drawVillage(t);
+  const W=cv.width,H=cv.height;
+  // Names appear floating near children
+  const names=['Сива','Мал','Ора','Ти'];
+  const wellX=W*.46;
+  [wellX-22,wellX-12,wellX+6,wellX+18].forEach((px,i)=>{
+    const rise=(t*.00045+i*.25)%1;
+    const alpha=.35*(1-rise);
+    cx.fillStyle=`rgba(201,168,76,${alpha})`;
+    cx.font=`italic 12px "IM Fell English"`;
+    cx.fillText(names[i], px-8, H*.63-rise*40);
+  });
+  // glow from Kael's book stronger
+  const bg2=cx.createRadialGradient(W*.18,H*.655,0,W*.18,H*.655,55);
+  bg2.addColorStop(0,`rgba(201,168,76,${.22+.07*Math.sin(t*.002)})`); bg2.addColorStop(1,'transparent');
+  cx.fillStyle=bg2; cx.fillRect(W*.06,H*.58,W*.22,H*.15);
+}
+
+// ════════════════════════════════════
+// CITY — Act II: silent city at night, rows of still Molchalniki
+// ════════════════════════════════════
+function drawCity(t){
+  const W=cv.width,H=cv.height; cx.clearRect(0,0,W,H);
+  const sky=cx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#040302'); sky.addColorStop(.55,'#0a0807'); sky.addColorStop(1,'#161009');
+  drawSky(sky); stars(t,32,.42); moon(W*.18,H*.13,W*.09);
+  // city wall
+  const wallY=H*.55;
+  cx.fillStyle='#0d0a07'; cx.fillRect(0,wallY,W,H-wallY);
+  // battlements — even, geometric, ordered
+  for(let x=0;x<W;x+=22){ cx.fillStyle='#0d0a07'; cx.fillRect(x,wallY-14,15,14); }
+  // Many uniform towers — all dark, no warmth
+  const towers=[];
+  for(let i=0;i<22;i++){
+    const tx=(i/22)*W+rng(i*6.1)*W*.02;
+    const th=H*.1+rng(i*2.3)*H*.24, tw2=W*.038+rng(i*3.9)*W*.022;
+    towers.push({x:tx,y:wallY-th,w:tw2,h:th});
+    cx.fillStyle='#0b0906'; cx.fillRect(tx,wallY-th,tw2,th);
+    // narrow arched windows — all dark
+    const wc=Math.floor(th/(H*.06));
+    for(let j=0;j<wc;j++){
+      const wy=wallY-th+j*(H*.06)+H*.02;
+      cx.fillStyle='#090705'; cx.fillRect(tx+tw2*.28,wy,tw2*.2,H*.04);
+      cx.beginPath(); cx.arc(tx+tw2*.38,wy,tw2*.1,Math.PI,0); cx.fill();
+    }
+    // spire on tall ones
+    if(th>H*.2){ cx.beginPath(); cx.moveTo(tx,wallY-th); cx.lineTo(tx+tw2/2,wallY-th-th*.3); cx.lineTo(tx+tw2,wallY-th); cx.fillStyle='#090704'; cx.fill(); }
+  }
+  // SILENCE SYMBOL on the central main tower
+  const sx=W*.5, sy=H*.28;
+  const symAlpha=.06+.025*Math.sin(t*.0008);
+  cx.strokeStyle=`rgba(180,165,140,${symAlpha})`; cx.lineWidth=1.5;
+  cx.beginPath(); cx.arc(sx,sy,18,0,Math.PI*2); cx.stroke();
+  // crossed-out mouth
+  cx.beginPath(); cx.moveTo(sx-10,sy); cx.bezierCurveTo(sx-5,sy+5,sx+5,sy+5,sx+10,sy); cx.stroke(); // mouth
+  cx.beginPath(); cx.moveTo(sx-12,sy-5); cx.lineTo(sx+12,sy+7); cx.stroke(); // cross
+  // Gate arch — imposing
+  cx.beginPath(); cx.arc(W*.5,wallY,36,Math.PI,0); cx.fillStyle='#16120c'; cx.fill();
+  cx.strokeStyle='rgba(100,80,40,.12)'; cx.lineWidth=1.5; cx.stroke();
+  // Gate torches — very dim
+  flame(W*.42,wallY,8,4,t,1); flame(W*.58,wallY,8,4,t,4);
+  // ROWS of Molchalniki — standing in perfect geometric formation, arms at sides, heads slightly bowed
+  for(let row=0;row<3;row++){
+    for(let col=0;col<10;col++){
+      const px=W*.06+col*(W*.089), py=H*.67+row*24;
+      cx.fillStyle='rgba(14,11,7,.88)';
+      cx.beginPath(); cx.arc(px,py-11,4,0,Math.PI*2); cx.fill(); // head
+      cx.fillRect(px-3.5,py-7,7,16); // body
+      // cloak edge
+      cx.beginPath(); cx.moveTo(px-5,py-7); cx.lineTo(px-6,py+8); cx.strokeStyle='rgba(14,11,7,.6)'; cx.lineWidth=1; cx.stroke();
+      cx.beginPath(); cx.moveTo(px+5,py-7); cx.lineTo(px+6,py+8); cx.stroke();
+    }
+  }
+  // Kael entering through gate
+  kael(W*.5,H*.62,28,t,.12);
+  const fog=cx.createLinearGradient(0,H*.52,0,H);
+  fog.addColorStop(0,'transparent'); fog.addColorStop(1,'rgba(6,4,2,.88)');
+  cx.fillStyle=fog; cx.fillRect(0,H*.52,W,H*.48);
+  vign(.88);
+}
+
+// ════════════════════════════════════
+// VEIA CHAMBER — intimate room, two people talking
+// ════════════════════════════════════
+function drawVeia(t){
+  const W=cv.width,H=cv.height; cx.clearRect(0,0,W,H);
+  // Dark interior
+  const bg=cx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#0a0806'); bg.addColorStop(1,'#050403');
+  drawSky(bg);
+  // Stone wall texture (lines)
+  cx.strokeStyle='rgba(30,22,12,.4)'; cx.lineWidth=.8;
+  for(let y=H*.1;y<H*.85;y+=H*.06){ cx.beginPath(); cx.moveTo(0,y); cx.lineTo(W,y); cx.stroke(); }
+  for(let x=0;x<W;x+=W*.12){ cx.beginPath(); cx.moveTo(x,H*.1); cx.lineTo(x,H*.85); cx.stroke(); }
+  // Candle on desk (right side) — only light source
+  const canX=W*.72, canY=H*.58;
+  flame(canX,canY,22,8,t,2);
+  // Candlelight radiating
+  const cg=cx.createRadialGradient(canX,canY-5,0,canX,canY-5,W*.35);
+  cg.addColorStop(0,`rgba(220,150,40,${.18+.05*Math.sin(t*.002)})`); cg.addColorStop(.4,'rgba(200,120,20,.06)'); cg.addColorStop(1,'transparent');
+  cx.fillStyle=cg; cx.fillRect(0,0,W,H);
+  // candle body
+  cx.fillStyle='rgba(230,210,170,.25)'; cx.fillRect(canX-3,canY,6,18);
+  // desk silhouette
+  cx.fillStyle='#0d0a07'; cx.fillRect(canX-30,canY+16,65,6); // tabletop
+  cx.fillRect(canX-28,canY+22,5,H*.1); cx.fillRect(canX+24,canY+22,5,H*.1); // legs
+  // Books on desk
+  [canX-22,canX-14,canX-6].forEach((bx,i)=>{
+    cx.fillStyle=`rgba(${[25,22,28][i]},${[18,15,20][i]},${[12,10,14][i]},.9)`;
+    cx.fillRect(bx,canY+6,6,10);
+  });
+  // VEIA silhouette — seated, upright, watching Kael
+  const vx=W*.65, vy=H*.58;
+  cx.fillStyle='#100d09';
+  cx.beginPath(); cx.arc(vx,vy-38,6,0,Math.PI*2); cx.fill(); // head
+  cx.beginPath(); cx.ellipse(vx,vy-20,7,18,0,0,Math.PI*2); cx.fill(); // body
+  cx.fillRect(vx-6,vy-2,12,22); // skirt/lower
+  // hair
+  cx.beginPath(); cx.arc(vx,vy-38,6,Math.PI,0); cx.fillStyle='#0a0807'; cx.fill();
+  cx.beginPath(); cx.moveTo(vx-6,vy-38); cx.lineTo(vx-4,vy-20); cx.strokeStyle='#0a0807'; cx.lineWidth=3; cx.stroke();
+  // KAEL silhouette — standing across the table
+  kael(W*.32,H*.63,34,0,.1);
+  // glow from Kael's book meeting candle
+  const meetGlow=cx.createRadialGradient(W*.5,H*.6,0,W*.5,H*.6,W*.2);
+  meetGlow.addColorStop(0,`rgba(201,168,76,${.06+.02*Math.sin(t*.0018)})`); meetGlow.addColorStop(1,'transparent');
+  cx.fillStyle=meetGlow; cx.fillRect(W*.25,H*.45,W*.5,H*.25);
+  // floor
+  cx.fillStyle='#0c0908'; cx.fillRect(0,H*.78,W,H*.22);
+  vign(.82);
+}
+
+// ════════════════════════════════════
+// SOURCE — Act III: monastery ruins, the great pit
+// ════════════════════════════════════
+function drawSource(t){
+  const W=cv.width,H=cv.height; cx.clearRect(0,0,W,H);
+  const sky=cx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#030202'); sky.addColorStop(.6,'#0c0908'); sky.addColorStop(1,'#14100a');
+  drawSky(sky); stars(t,12,.2);
+  // RUINS — broken monastery walls, blackened
+  // left wall section
+  cx.fillStyle='#0b0808';
+  cx.fillRect(0,H*.3,W*.13,H*.42);
+  // jagged broken top
+  [[0,16],[18,6],[36,20],[54,10],[72,24],[90,8]].forEach(([ox,ht])=>{ cx.fillRect(ox,H*.3-ht,16,ht); });
+  // right wall
+  cx.fillRect(W*.87,H*.34,W*.13,H*.38);
+  [[W*.87,12],[W*.89,22],[W*.91,8],[W*.93,18],[W*.95,14],[W*.97,24]].forEach(([ox,ht])=>{ cx.fillRect(ox,H*.34-ht,16,ht); });
+  // Broken arch spanning top
+  cx.beginPath(); cx.arc(W*.5,H*.3,W*.22,Math.PI,0); cx.strokeStyle='rgba(14,10,7,.8)'; cx.lineWidth=8; cx.stroke();
+  cx.beginPath(); cx.arc(W*.5,H*.3,W*.22,Math.PI,0); cx.strokeStyle='#0b0808'; cx.lineWidth=6; cx.stroke();
+  // scattered rubble
+  for(let i=0;i<28;i++){
+    const rx=rng(i*4.1)*W, ry=H*.62+rng(i*3.3)*H*.12;
+    cx.fillStyle='#0e0b08'; cx.fillRect(rx,ry,4+i%8,3+i%5);
+  }
+  // scorched black ground
+  cx.fillStyle='#090706'; cx.fillRect(0,H*.6,W,H*.4);
+  // blackened patches
+  for(let i=0;i<6;i++){
+    const bx=rng(i*7.3)*W, by=H*.62+rng(i*5.1)*H*.1;
+    const bg2=cx.createRadialGradient(bx,by,0,bx,by,20+i*8);
+    bg2.addColorStop(0,'rgba(5,4,3,.6)'); bg2.addColorStop(1,'transparent');
+    cx.fillStyle=bg2; cx.fillRect(bx-30,by-20,60,40);
+  }
+  // INSCRIPTION ON WALL (left wall) — glowing faintly
+  cx.fillStyle=`rgba(180,160,120,${.07+.03*Math.sin(t*.0009)})`;
+  cx.font='9px monospace';
+  ['«тишина побеждает тишиной»','«оно растёт от слов»'].forEach((line,i)=>{
+    cx.fillText(line, 8, H*.38+i*14);
+  });
+  // THE PIT — absolute void in the centre
+  const px=W/2, py=H*.61, pr=Math.min(W,H)*.19;
+  // multiple glow layers
+  for(let r=5;r>=0;r--){
+    const pg=cx.createRadialGradient(px,py,0,px,py,pr*(1+r*.48));
+    const alpha=(.72-r*.1)+.08*Math.sin(t*.0012);
+    pg.addColorStop(0,`rgba(22,8,44,${alpha})`); pg.addColorStop(.4,`rgba(30,10,56,${alpha*.5})`); pg.addColorStop(1,'transparent');
+    cx.fillStyle=pg; cx.fillRect(0,0,W,H);
+  }
+  // pit ellipse — absolute darkness
+  cx.beginPath(); cx.ellipse(px,py,pr,pr*.3,0,0,Math.PI*2);
+  cx.fillStyle='#010101'; cx.fill();
+  // rim glow
+  cx.beginPath(); cx.ellipse(px,py,pr,pr*.3,0,0,Math.PI*2);
+  cx.strokeStyle=`rgba(55,20,90,${.35+.12*Math.sin(t*.001)})`; cx.lineWidth=2.5; cx.stroke();
+  // expanding ripple rings from pit
+  for(let r=0;r<4;r++){
+    const rp=(t*.00025+r/4)%1;
+    const rr=pr+rp*pr*1.8;
+    cx.beginPath(); cx.ellipse(px,py,rr,rr*.3,0,0,Math.PI*2);
+    cx.strokeStyle=`rgba(55,20,90,${(1-rp)*.12})`; cx.lineWidth=1; cx.stroke();
+  }
+  // Letters being pulled slowly toward pit
+  const abc2='абвгдеёжзийклмнопрстуфхцчшщъыьэюя';
+  for(let i=0;i<12;i++){
+    const angle=(t*.00035+i*(Math.PI*2/12));
+    const progress=(t*.00022+i*.083)%1; // 0=far, 1=at pit
+    const dist=pr*.4+pr*(1.8*(1-progress));
+    const lx=px+Math.cos(angle)*dist, ly=py+Math.sin(angle)*dist*.3;
+    const alpha=.06*(1-progress*.7);
+    const size=8+4*(1-progress);
+    cx.fillStyle=`rgba(176,164,140,${alpha})`; cx.font=`italic ${size}px "IM Fell English"`; cx.fillText(abc2[i%abc2.length],lx,ly);
+  }
+  // Kael at the pit edge — small, looking down
+  kael(W*.5,H*.63,22,0,.08);
+  vign(.9);
+}
+
+// ════════════════════════════════════
+// COMBAT — the void in full power, Kael fighting
+// ════════════════════════════════════
+function drawCombat(t){
+  const W=cv.width,H=cv.height; cx.clearRect(0,0,W,H);
+  // absolute void — very dark purple-black
+  const bg=cx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#030103'); bg.addColorStop(.5,'#05020a'); bg.addColorStop(1,'#030103');
+  drawSky(bg);
+  // BEZMOLAVIE — massive pulsing void entity filling upper half
+  const vx=W/2, vy=H*.32;
+  const pulse=.82+.18*Math.sin(t*.0014);
+  const vR=Math.min(W,H)*.26*pulse;
+  // outer corona
+  for(let r=6;r>=0;r--){
+    const vg=cx.createRadialGradient(vx,vy,0,vx,vy,vR*(1+r*.5));
+    const a=(.78-r*.1)+.07*Math.sin(t*.001+r);
+    vg.addColorStop(0,`rgba(20,6,42,${a})`); vg.addColorStop(.45,`rgba(32,10,60,${a*.5})`); vg.addColorStop(1,'transparent');
+    cx.fillStyle=vg; cx.fillRect(0,0,W,H);
+  }
+  // irregular void body
+  cx.save(); cx.translate(vx,vy); cx.beginPath();
+  const pts=16;
+  for(let i=0;i<=pts;i++){
+    const a=(i/pts)*Math.PI*2;
+    const wob=.78+.22*Math.sin(t*.0022+i*2.7+Math.cos(i*1.3)*t*.001);
+    if(i===0) cx.moveTo(Math.cos(a)*vR*wob,Math.sin(a)*vR*.78*wob);
+    else cx.lineTo(Math.cos(a)*vR*wob,Math.sin(a)*vR*.78*wob);
+  }
+  cx.fillStyle='#010102'; cx.fill(); cx.restore();
+  // TENDRILS reaching outward
+  for(let i=0;i<8;i++){
+    const ta=(i/8)*Math.PI*2+t*.00045;
+    const len=vR*(1.1+.5*Math.sin(t*.0018+i*1.4));
+    cx.save(); cx.translate(vx,vy);
+    cx.beginPath(); cx.moveTo(0,0);
+    const cp1x=Math.cos(ta+.4)*len*.45, cp1y=Math.sin(ta+.4)*len*.45;
+    const cp2x=Math.cos(ta-.4)*len*.85, cp2y=Math.sin(ta-.4)*len*.85;
+    cx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,Math.cos(ta)*len,Math.sin(ta)*len);
+    cx.strokeStyle=`rgba(32,8,65,${.3+.12*Math.sin(t*.002+i)})`; cx.lineWidth=3.5-i*.3; cx.lineCap='round'; cx.stroke();
+    cx.restore();
+  }
+  // WORDS being absorbed — flying from Kael upward into void
+  const absorbed=['слово','огонь','тень','время','земля','свет','ветер'];
+  for(let i=0;i<7;i++){
+    const progress=(t*.0006+i*.143)%1;
+    // start at bottom (Kael), fly to centre (void)
+    const startX=W/2+(i-.5)*60, startY=H*.72;
+    const lx=startX+(vx-startX)*progress+Math.sin(progress*Math.PI+i)*20;
+    const ly=startY+(vy-startY)*progress;
+    const alpha=.22*(1-progress);
+    cx.fillStyle=`rgba(201,168,76,${alpha})`; cx.font=`italic ${10+i%4}px "IM Fell English"`; cx.fillText(absorbed[i],lx,ly);
+  }
+  // Stone floor
+  const floor=cx.createLinearGradient(0,H*.6,0,H);
+  floor.addColorStop(0,'transparent'); floor.addColorStop(.3,'rgba(12,8,6,.7)'); floor.addColorStop(1,'rgba(8,5,3,.95)');
+  cx.fillStyle=floor; cx.fillRect(0,H*.6,W,H*.4);
+  // stone cracks on floor
+  cx.strokeStyle='rgba(18,12,7,.5)'; cx.lineWidth=.8;
+  [[.35,.78,.48,.82],[.55,.75,.62,.8],[.3,.88,.4,.83]].forEach(([x1,y1,x2,y2])=>{
+    cx.beginPath(); cx.moveTo(W*x1,H*y1); cx.lineTo(W*x2,H*y2); cx.stroke();
+  });
+  // KAEL — arms raised, book open, golden glow fighting the darkness
+  const kx2=W/2, ky2=H*.73;
+  kael(kx2,ky2,40,0,.0);
+  // raised arms with book
+  cx.fillStyle='#0e0b08';
+  cx.beginPath(); cx.moveTo(kx2-8,ky2-16); cx.lineTo(kx2-20,ky2-32); cx.strokeStyle='#0e0b08'; cx.lineWidth=5; cx.lineCap='round'; cx.stroke();
+  cx.beginPath(); cx.moveTo(kx2+8,ky2-16); cx.lineTo(kx2+20,ky2-32); cx.stroke();
+  // book pages open
+  cx.fillStyle='rgba(240,220,160,.18)'; cx.fillRect(kx2-16,ky2-38,32,22);
+  cx.strokeStyle='rgba(201,168,76,.15)'; cx.lineWidth=.5; cx.beginPath(); cx.moveTo(kx2,ky2-38); cx.lineTo(kx2,ky2-16); cx.stroke();
+  // BOOK GLOW vs VOID — the core dramatic tension
+  const bookGlow=cx.createRadialGradient(kx2,ky2-28,0,kx2,ky2-28,70);
+  bookGlow.addColorStop(0,`rgba(201,168,76,${.3+.1*Math.sin(t*.005)})`);
+  bookGlow.addColorStop(.4,'rgba(180,140,40,.12)'); bookGlow.addColorStop(1,'transparent');
+  cx.fillStyle=bookGlow; cx.fillRect(kx2-80,ky2-100,160,140);
+  vign(.88);
+}
+
+// ════════════════════════════════════
+// ENDINGS
+// ════════════════════════════════════
+function drawEndLight(t){
+  const W=cv.width,H=cv.height; cx.clearRect(0,0,W,H);
+  // PRE-DAWN — sky lightening from east
+  const sky=cx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#08060402'); sky.addColorStop(.35,'#14100a'); sky.addColorStop(.65,'#1e1610'); sky.addColorStop(1,'#2c1e0e');
+  drawSky(sky); stars(t,35,.3);
+  // Dawn glow spreading from horizon
+  const dg=cx.createRadialGradient(W*.5,H*.85,0,W*.5,H*.55,H);
+  dg.addColorStop(0,`rgba(201,168,76,${.22+.07*Math.sin(t*.0006)})`);
+  dg.addColorStop(.3,'rgba(180,130,35,.1)'); dg.addColorStop(.6,'rgba(160,100,20,.04)'); dg.addColorStop(1,'transparent');
+  cx.fillStyle=dg; cx.fillRect(0,0,W,H);
+  // NAMES rising from the ground into the light
+  const names=['Сива','Страж','Мал','Ора','Каэль','Вея','Ти','Старуха'];
+  for(let i=0;i<names.length;i++){
+    const cycle=(t*.000085+i*.125)%1;
+    const nx=W*(.08+(i%4)*.26)+Math.sin(t*.00025+i)*18;
+    const ny=H*(.78-cycle*.65);
+    const alpha=.32*Math.sin(cycle*Math.PI);
+    cx.fillStyle=`rgba(201,168,76,${alpha})`; cx.font=`italic ${11+i%4}px "IM Fell English"`; cx.fillText(names[i],nx,ny);
+  }
+  // Kael — standing, arms open, book dissolving into light
+  kael(W/2,H*.7,34,0,.0);
+  const dissolve=cx.createRadialGradient(W/2,H*.62,0,W/2,H*.62,80);
+  dissolve.addColorStop(0,`rgba(201,168,76,${.35+.1*Math.sin(t*.003)})`); dissolve.addColorStop(.5,'rgba(220,180,60,.1)'); dissolve.addColorStop(1,'transparent');
+  cx.fillStyle=dissolve; cx.fillRect(W/2-90,H*.48,180,160);
+  // Mountain silhouette at peace
+  cx.beginPath(); cx.moveTo(0,H*.8);
+  [.12,.25,.4,.55,.68,.82,.94].forEach((rx,i)=>cx.lineTo(W*rx,H*(.6+Math.sin(i*1.5)*.06)));
+  cx.lineTo(W,H*.78); cx.lineTo(W,H); cx.lineTo(0,H); cx.fillStyle='#0f0c08'; cx.fill();
+  vign(.65);
+}
+
+function drawEndAsh(t){
+  // Kael standing in the pit, silence winning — grey
+  drawSource(t);
+  const W=cv.width,H=cv.height;
+  // ASH FALLING
+  for(let i=0;i<35;i++){
+    const ax=rng(i*4.7)*W;
+    const ay=(t*.000065*60+i*31.4)%H;
+    const as=.8+rng(i*2.1)*.8;
+    cx.fillStyle=`rgba(130,118,100,${.12+rng(i)*(.08)})`; cx.beginPath(); cx.arc(ax,ay,as,0,Math.PI*2); cx.fill();
+  }
+  // Kael standing motionless at edge
+  kael(W*.5,H*.635,20,0,.0);
+  // Almost no book glow left
+  const bg3=cx.createRadialGradient(W*.5,H*.635,0,W*.5,H*.635,25);
+  bg3.addColorStop(0,`rgba(201,168,76,${.04+.02*Math.sin(t*.0012)})`); bg3.addColorStop(1,'transparent');
+  cx.fillStyle=bg3; cx.fillRect(W*.4,H*.55,W*.2,H*.12);
+}
+
+function drawEndEcho(t){
+  // Village reborn — two figures, Kael + Veia, dawn
+  drawEndLight(t);
+  const W=cv.width,H=cv.height;
+  // VEIA arriving from right
+  const off=55+Math.min(t*.01,0)*10;
+  kael(W/2-off,H*.68,30,0,.12);
+  // Veia silhouette
+  const vx2=W/2+off, vy2=H*.685;
+  cx.fillStyle='#0e0b08';
+  cx.beginPath(); cx.arc(vx2,vy2-32,5,0,Math.PI*2); cx.fill();
+  cx.beginPath(); cx.ellipse(vx2,vy2-16,5,14,0,0,Math.PI*2); cx.fill();
+  cx.fillRect(vx2-4,vy2-2,8,16);
+  // Veia's glow — silver/cool vs Kael's warm gold
+  const vg2=cx.createRadialGradient(vx2,vy2,0,vx2,vy2,35);
+  vg2.addColorStop(0,`rgba(140,120,180,${.12+.04*Math.sin(t*.002)})`); vg2.addColorStop(1,'transparent');
+  cx.fillStyle=vg2; cx.fillRect(vx2-40,vy2-45,80,70);
+  // meeting glow between them
+  const mx=(W/2-off+vx2)/2;
+  const mg=cx.createRadialGradient(mx,vy2-20,0,mx,vy2-20,40);
+  mg.addColorStop(0,`rgba(201,168,76,${.1+.04*Math.sin(t*.0018)})`); mg.addColorStop(1,'transparent');
+  cx.fillStyle=mg; cx.fillRect(mx-50,vy2-60,100,80);
+}
+
+function drawEndSilence(t){
+  drawCombat(t);
+  const W=cv.width,H=cv.height;
+  // Kael merging with void — his outline fading
+  const mx=cx.createRadialGradient(W/2,H*.35,0,W/2,H*.35,H*.6);
+  mx.addColorStop(0,'rgba(3,1,7,.5)'); mx.addColorStop(1,'transparent');
+  cx.fillStyle=mx; cx.fillRect(0,0,W,H);
+  // faint outline of Kael inside void
+  cx.globalAlpha=.15+.08*Math.sin(t*.0008);
+  kael(W/2,H*.32,28,0,.0);
+  cx.globalAlpha=1;
+}
+
+// ── MAIN LOOP ──
+// ── SOURCE with naming effect ──
+function drawSourceName(t){
+  drawSource(t);
+  const W=cv.width,H=cv.height;
+  // Names floating up from the pit — being named gives them form
+  const nms=['Голод','Пустота','Тишина','Безмолвие'];
+  for(let i=0;i<nms.length;i++){
+    const cy2=(t*.00018+i*.25)%1;
+    const nx=W*(.25+i*.16)+Math.sin(t*.0003+i)*12;
+    const ny=H*(.7-cy2*.55);
+    const alpha=.35*Math.sin(cy2*Math.PI);
+    cx.fillStyle=`rgba(201,168,76,${alpha})`;
+    cx.font=`italic ${13+i%3}px "IM Fell English"`;
+    cx.fillText(nms[i],nx,ny);
+  }
+  // Pit shrinking slightly
+  const shrink=.85+.15*Math.sin(t*.0006);
+  const px=W/2,py=H*.61,pr=Math.min(W,H)*.19*shrink;
+  const pg=cx.createRadialGradient(px,py,0,px,py,pr);
+  pg.addColorStop(0,'rgba(201,168,76,.06)'); pg.addColorStop(1,'transparent');
+  cx.fillStyle=pg; cx.fillRect(px-pr,py-pr*.5,pr*2,pr);
+}
+
+const BG_FNS = {
+  title:drawTitle, lore:drawLore,
+  village:drawVillage, village_names:drawVillageLight,
+  city:drawCity, veia:drawVeia,
+  source:drawSource, source_name:drawSourceName, combat:drawCombat,
+  end_light:drawEndLight, end_ash:drawEndAsh, end_echo:drawEndEcho, end_silence:drawEndSilence,
+};
+function animBG(ts){ bgT=ts; requestAnimationFrame(animBG); const fn=BG_FNS[bgNow]; if(fn) fn(ts); }
+requestAnimationFrame(animBG);
+
+// ═══════════════════════════════════════════════════
+//  PARTICLES
+// ═══════════════════════════════════════════════════
+function spawnParticles(){
+  const c=document.getElementById('particles');
+  for(let i=0;i<22;i++){
+    const p=document.createElement('div'); p.className='part';
+    p.style.left=Math.random()*100+'vw';
+    p.style.setProperty('--dx',(Math.random()-.5)*100+'px');
+    p.style.animationDuration=(8+Math.random()*12)+'s';
+    p.style.animationDelay=(Math.random()*10)+'s';
+    p.style.opacity=0;
+    const sz=1+Math.random()*2;
+    p.style.width=sz+'px'; p.style.height=sz+'px';
+    p.style.background=`rgba(201,168,76,${.15+Math.random()*.2})`;
+    c.appendChild(p);
+  }
+}
+spawnParticles();
+updW();
+setBG('title');
+</script>
+</body>
+</html>
